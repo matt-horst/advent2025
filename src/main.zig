@@ -79,6 +79,7 @@ pub fn main() !void {
     defer day2.deinit(allocator);
 
     try day2.append(allocator, .{ .f = advent2025.day2Part1, .file_path = "input/input_day2"});
+    try day2.append(allocator, .{ .f = advent2025.day2Part2, .file_path = "input/input_day2"});
 
     try days.append(allocator, day2);
 
@@ -127,4 +128,16 @@ test "day2 part1 test" {
     defer gpa.free(result);
 
     try std.testing.expectEqualStrings("1227775554", result);
+}
+
+test "day2 part2 test" {
+    const gpa = std.testing.allocator;
+
+    const buf = try read_file(gpa, "input/example_day2");
+    defer gpa.free(buf);
+
+    const result = try advent2025.day2Part2(gpa, buf);
+    defer gpa.free(result);
+
+    try std.testing.expectEqualStrings("4174379265", result);
 }
