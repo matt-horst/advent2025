@@ -50,6 +50,10 @@ pub fn build(b: *std.Build) void {
         .{ .name = "advent", .module = mod },
     } });
 
+    const day3 = b.addModule("day3", .{ .root_source_file = b.path("src/day3.zig"), .target = target, .imports = &.{
+        .{ .name = "advent", .module = mod },
+    } });
+
     // Here we define an executable. An executable needs to have a root module
     // which needs to expose a `main` function. While we could add a main function
     // to the module defined above, it's sometimes preferable to split business
@@ -90,6 +94,7 @@ pub fn build(b: *std.Build) void {
                 .{ .name = "advent", .module = mod },
                 .{ .name = "day1", .module = day1 },
                 .{ .name = "day2", .module = day2 },
+                .{ .name = "day3", .module = day3 },
             },
         }),
     });
