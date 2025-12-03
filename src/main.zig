@@ -2,6 +2,7 @@ const std = @import("std");
 const advent = @import("advent");
 const day1 = @import("day1");
 const day2 = @import("day2");
+const day3 = @import("day3");
 
 fn read_file(allocator: std.mem.Allocator, file_path: []const u8) ![]const u8 {
     const file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
@@ -85,6 +86,15 @@ pub fn main() !void {
 
     try days.append(allocator, d2);
 
+    // Day 2
+    var d3 = InnerArray{};
+    defer d3.deinit(allocator);
+
+    try d3.append(allocator, .{ .f = day3.part1, .file_path = "input/input_day3" });
+    try d3.append(allocator, .{ .f = day3.part2, .file_path = "input/input_day3" });
+
+    try days.append(allocator, d3);
+
     const day_start: usize = if (day < 0) 0 else @intCast(day - 1);
     const day_end: usize = if (day < 0) days.items.len else @intCast(day);
     for (days.items[day_start..day_end]) |d| {
@@ -142,4 +152,28 @@ test "day2 part2 test" {
     defer gpa.free(result);
 
     try std.testing.expectEqualStrings("4174379265", result);
+}
+
+test "day3 part1 test" {
+    const gpa = std.testing.allocator;
+
+    const buf = try read_file(gpa, "input/example_day3");
+    defer gpa.free(buf);
+
+    const result = try day3.part1(gpa, buf);
+    defer gpa.free(result);
+
+    try std.testing.expectEqualStrings("357", result);
+}
+
+test "day3 part2 test" {
+    const gpa = std.testing.allocator;
+
+    const buf = try read_file(gpa, "input/example_day3");
+    defer gpa.free(buf);
+
+    const result = try day3.part2(gpa, buf);
+    defer gpa.free(result);
+
+    try std.testing.expectEqualStrings("3121910778619", result);
 }
