@@ -20,6 +20,7 @@ pub fn build(b: *std.Build) void {
     // of this build script using `b.option()`. All defined flags (including
     // target and optimize options) will be listed when running `zig build --help`
     // in this directory.
+    //
 
     // This creates a module, which represents a collection of source files alongside
     // some compilation options, such as optimization mode and linked system libraries.
@@ -41,6 +42,14 @@ pub fn build(b: *std.Build) void {
         .target = target,
     });
 
+    const day1 = b.addModule("day1", .{ .root_source_file = b.path("src/day1.zig"), .target = target, .imports = &.{
+        .{ .name = "advent", .module = mod },
+    } });
+
+    const day2 = b.addModule("day2", .{ .root_source_file = b.path("src/day2.zig"), .target = target, .imports = &.{
+        .{ .name = "advent", .module = mod },
+    } });
+
     // Here we define an executable. An executable needs to have a root module
     // which needs to expose a `main` function. While we could add a main function
     // to the module defined above, it's sometimes preferable to split business
@@ -58,7 +67,7 @@ pub fn build(b: *std.Build) void {
     // If neither case applies to you, feel free to delete the declaration you
     // don't need and to put everything under a single module.
     const exe = b.addExecutable(.{
-        .name = "advent2025",
+        .name = "advent",
         .root_module = b.createModule(.{
             // b.createModule defines a new module just like b.addModule but,
             // unlike b.addModule, it does not expose the module to consumers of
@@ -78,7 +87,9 @@ pub fn build(b: *std.Build) void {
                 // repeated because you are allowed to rename your imports, which
                 // can be extremely useful in case of collisions (which can happen
                 // importing modules from different packages).
-                .{ .name = "advent2025", .module = mod },
+                .{ .name = "advent", .module = mod },
+                .{ .name = "day1", .module = day1 },
+                .{ .name = "day2", .module = day2 },
             },
         }),
     });

@@ -1,5 +1,7 @@
 const std = @import("std");
-const advent2025 = @import("advent2025");
+const advent = @import("advent");
+const day1 = @import("day1");
+const day2 = @import("day2");
 
 fn read_file(allocator: std.mem.Allocator, file_path: []const u8) ![]const u8 {
     const file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
@@ -14,7 +16,7 @@ fn read_file(allocator: std.mem.Allocator, file_path: []const u8) ![]const u8 {
     return buf;
 }
 
-fn process_file(allocator: std.mem.Allocator, f: *const fn (allocator: std.mem.Allocator, input: []const u8) advent2025.InputError![]const u8, file_path: []const u8) !void {
+fn process_file(allocator: std.mem.Allocator, f: *const fn (allocator: std.mem.Allocator, input: []const u8) advent.InputError![]const u8, file_path: []const u8) !void {
     const buf = try read_file(allocator, file_path);
     defer allocator.free(buf);
 
@@ -61,27 +63,27 @@ pub fn main() !void {
         }
     }
 
-    const InnerArray = std.ArrayList(struct { f: *const fn (allocator: std.mem.Allocator, input: []const u8) advent2025.InputError![]const u8, file_path: []const u8 });
+    const InnerArray = std.ArrayList(struct { f: *const fn (allocator: std.mem.Allocator, input: []const u8) advent.InputError![]const u8, file_path: []const u8 });
     var days = std.ArrayList(InnerArray){};
     defer days.deinit(allocator);
 
     // Day 1
-    var day1 = InnerArray{};
-    defer day1.deinit(allocator);
+    var d1 = InnerArray{};
+    defer d1.deinit(allocator);
 
-    try day1.append(allocator, .{ .f = advent2025.day1Part1, .file_path = "input/input_day1" });
-    try day1.append(allocator, .{ .f = advent2025.day1Part2, .file_path = "input/input_day1" });
+    try d1.append(allocator, .{ .f = day1.part1, .file_path = "input/input_day1" });
+    try d1.append(allocator, .{ .f = day1.part2, .file_path = "input/input_day1" });
 
-    try days.append(allocator, day1);
+    try days.append(allocator, d1);
 
     // Day 2
-    var day2 = InnerArray{};
-    defer day2.deinit(allocator);
+    var d2 = InnerArray{};
+    defer d2.deinit(allocator);
 
-    try day2.append(allocator, .{ .f = advent2025.day2Part1, .file_path = "input/input_day2"});
-    try day2.append(allocator, .{ .f = advent2025.day2Part2, .file_path = "input/input_day2"});
+    try d2.append(allocator, .{ .f = day2.part1, .file_path = "input/input_day2" });
+    try d2.append(allocator, .{ .f = day2.part2, .file_path = "input/input_day2" });
 
-    try days.append(allocator, day2);
+    try days.append(allocator, d2);
 
     const day_start: usize = if (day < 0) 0 else @intCast(day - 1);
     const day_end: usize = if (day < 0) days.items.len else @intCast(day);
@@ -100,7 +102,7 @@ test "day1 part1 test" {
     const buf = try read_file(gpa, "input/example_day1");
     defer gpa.free(buf);
 
-    const result = try advent2025.day1Part1(gpa, buf);
+    const result = try day1.part1(gpa, buf);
     defer gpa.free(result);
 
     try std.testing.expectEqualStrings("3", result);
@@ -112,7 +114,7 @@ test "day1 part2 test" {
     const buf = try read_file(gpa, "input/example_day1");
     defer gpa.free(buf);
 
-    const result = try advent2025.day1Part2(gpa, buf);
+    const result = try day1.part2(gpa, buf);
     defer gpa.free(result);
 
     try std.testing.expectEqualStrings("6", result);
@@ -124,7 +126,7 @@ test "day2 part1 test" {
     const buf = try read_file(gpa, "input/example_day2");
     defer gpa.free(buf);
 
-    const result = try advent2025.day2Part1(gpa, buf);
+    const result = try day2.part1(gpa, buf);
     defer gpa.free(result);
 
     try std.testing.expectEqualStrings("1227775554", result);
@@ -136,7 +138,7 @@ test "day2 part2 test" {
     const buf = try read_file(gpa, "input/example_day2");
     defer gpa.free(buf);
 
-    const result = try advent2025.day2Part2(gpa, buf);
+    const result = try day2.part2(gpa, buf);
     defer gpa.free(result);
 
     try std.testing.expectEqualStrings("4174379265", result);
