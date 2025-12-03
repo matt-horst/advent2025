@@ -35,6 +35,11 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
+    var stdout_buf: [1024]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&stdout_buf);
+    const stdout = &stdout_writer.interface;
+    defer stdout.flush() catch |err| std.debug.print("failed to flush stdout: {any}\n", .{err});
+
     var it = std.process.args();
     var kind = Arg.none;
     var day: i32 = -1;
@@ -95,7 +100,7 @@ pub fn main() !void {
     const day_start: usize = if (day < 0) 0 else @intCast(day - 1);
     const day_end: usize = if (day < 0) days.items.len else @intCast(day);
     for (day_start + 1.., days.items[day_start..day_end]) |i, d| {
-        std.debug.print("\nDay {d}\n", .{i});
+        try stdout.print("Day {d}\n", .{i});
 
         const part_start: usize = if (part < 0) 0 else @intCast(part - 1);
         const part_end: usize = if (part < 0) d.items.len else @intCast(part);
@@ -106,8 +111,9 @@ pub fn main() !void {
             };
             defer allocator.free(result);
 
-            std.debug.print("- Part {d}: {s}\n", .{ j, result });
+            try stdout.print("- Part {d}: {s}\n", .{ j, result });
         }
+        try stdout.print("\n", .{});
     }
 }
 
