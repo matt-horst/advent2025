@@ -10,11 +10,16 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
         const lhs = std.fmt.parseInt(usize, pair[0..idx], 10) catch return advent.InputError.InvalidInput;
         const rhs = std.fmt.parseInt(usize, pair[idx + 1 ..], 10) catch return advent.InputError.InvalidInput;
 
-        var buf: []u8 = std.heap.page_allocator.alloc(u8, pair.len - idx) catch return advent.InputError.InvalidInput;
-        for (lhs..rhs + 1) |i| {
-            const curr = std.fmt.bufPrint(buf[0..], "{d}", .{i}) catch return advent.InputError.InvalidInput;
-            if (std.mem.eql(u8, curr[0 .. curr.len / 2], curr[curr.len / 2 ..])) {
-                count += @intCast(i);
+        const max_len = pair.len - idx - 1;
+
+        var pattern_it = patterns().init(max_len / 2);
+        while (pattern_it.next()) |p| {
+            const pattern = p[0];
+            const pattern_len = p[1];
+
+            const val = repeat_pattern(pattern, pattern_len, 2);
+            if (lhs <= val and val <= rhs) {
+                count += val;
             }
         }
     }
