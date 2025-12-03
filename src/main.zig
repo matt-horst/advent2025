@@ -17,14 +17,11 @@ fn read_file(allocator: std.mem.Allocator, file_path: []const u8) ![]const u8 {
     return buf;
 }
 
-fn process_file(allocator: std.mem.Allocator, f: *const fn (allocator: std.mem.Allocator, input: []const u8) advent.InputError![]const u8, file_path: []const u8) !void {
+fn process_file(allocator: std.mem.Allocator, f: *const fn (allocator: std.mem.Allocator, input: []const u8) advent.InputError![]const u8, file_path: []const u8) ![]const u8 {
     const buf = try read_file(allocator, file_path);
     defer allocator.free(buf);
 
-    const result = try f(allocator, buf);
-    defer allocator.free(result);
-
-    std.debug.print("result: {s}\n", .{result});
+    return f(allocator, buf);
 }
 
 const Arg = enum {
@@ -97,11 +94,19 @@ pub fn main() !void {
 
     const day_start: usize = if (day < 0) 0 else @intCast(day - 1);
     const day_end: usize = if (day < 0) days.items.len else @intCast(day);
-    for (days.items[day_start..day_end]) |d| {
+    for (day_start + 1.., days.items[day_start..day_end]) |i, d| {
+        std.debug.print("\nDay {d}\n", .{i});
+
         const part_start: usize = if (part < 0) 0 else @intCast(part - 1);
         const part_end: usize = if (part < 0) d.items.len else @intCast(part);
-        for (d.items[part_start..part_end]) |p| {
-            try process_file(allocator, p.f, p.file_path);
+        for (part_start + 1.., d.items[part_start..part_end]) |j, p| {
+            const result = process_file(allocator, p.f, p.file_path) catch |err| switch (err) {
+                advent.InputError.InvalidInput => "Error: InvalidInput",
+                else => "Error: Something went wrong",
+            };
+            defer allocator.free(result);
+
+            std.debug.print("- Part {d}: {s}\n", .{ j, result });
         }
     }
 }
