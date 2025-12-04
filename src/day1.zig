@@ -1,5 +1,5 @@
 const std = @import("std");
-const advent = @import("advent");
+const advent = @import("root.zig");
 
 pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError![]const u8 {
     const range = 100;

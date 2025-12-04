@@ -1,8 +1,8 @@
 const std = @import("std");
-const advent = @import("advent");
-const day1 = @import("day1");
-const day2 = @import("day2");
-const day3 = @import("day3");
+const advent = @import("root.zig");
+const day1 = @import("day1.zig");
+const day2 = @import("day2.zig");
+const day3 = @import("day3.zig");
 
 fn read_file(allocator: std.mem.Allocator, file_path: []const u8) ![]const u8 {
     const file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
