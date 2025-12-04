@@ -3,6 +3,7 @@ const advent = @import("root.zig");
 const day1 = @import("day1.zig");
 const day2 = @import("day2.zig");
 const day3 = @import("day3.zig");
+const day4 = @import("day4.zig");
 
 fn read_file(allocator: std.mem.Allocator, file_path: []const u8) ![]const u8 {
     const file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
@@ -88,7 +89,7 @@ pub fn main() !void {
 
     try days.append(allocator, d2);
 
-    // Day 2
+    // Day 3
     var d3 = InnerArray{};
     defer d3.deinit(allocator);
 
@@ -96,6 +97,15 @@ pub fn main() !void {
     try d3.append(allocator, .{ .f = day3.part2, .file_path = "input/input_day3" });
 
     try days.append(allocator, d3);
+
+    // Day 4
+    var d4 = InnerArray{};
+    defer d4.deinit(allocator);
+
+    try d4.append(allocator, .{ .f = day4.part1, .file_path = "input/input_day4" });
+    try d4.append(allocator, .{ .f = day4.part2, .file_path = "input/input_day4" });
+
+    try days.append(allocator, d4);
 
     const day_start: usize = if (day < 0) 0 else @intCast(day - 1);
     const day_end: usize = if (day < 0) days.items.len else @intCast(day);
@@ -187,4 +197,28 @@ test "day3 part2 test" {
     defer gpa.free(result);
 
     try std.testing.expectEqualStrings("3121910778619", result);
+}
+
+test "day4 part1 test" {
+    const gpa = std.testing.allocator;
+
+    const buf = try read_file(gpa, "input/example_day4");
+    defer gpa.free(buf);
+
+    const result = try day4.part1(gpa, buf);
+    defer gpa.free(result);
+
+    try std.testing.expectEqualStrings("13", result);
+}
+
+test "day4 part2 test" {
+    const gpa = std.testing.allocator;
+
+    const buf = try read_file(gpa, "input/example_day4");
+    defer gpa.free(buf);
+
+    const result = try day4.part2(gpa, buf);
+    defer gpa.free(result);
+
+    try std.testing.expectEqualStrings("43", result);
 }
