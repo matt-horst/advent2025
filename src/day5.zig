@@ -1,84 +1,201 @@
 const std = @import("std");
 const advent = @import("root.zig");
 
-const TreeNode = struct {
-    left: ?*TreeNode,
-    right: ?*TreeNode,
-    low: u64,
-    high: u64,
+pub const IntervalTree = struct {
+    const Node = struct {
+        left: ?*Node = null,
+        right: ?*Node = null,
 
-    fn create(allocator: std.mem.Allocator, low: u64, high: u64) !*@This() {
-        var obj = try allocator.create(@This());
+        low: u64,
+        high: u64,
 
-        obj.low = low;
-        obj.high = high;
-        obj.left = null;
-        obj.right = null;
+        pub fn create(allocator: std.mem.Allocator, low: u64, high: u64) !*Node {
+            const n = try allocator.create(Node);
+            n.* = .{
+                .low = low,
+                .high = high,
+            };
+            return n;
+        }
 
-        return obj;
-    }
+        pub fn destroy(self: *Node, allocator: std.mem.Allocator) void {
+            if (self.left) |l| l.destroy(allocator);
+            if (self.right) |r| r.destroy(allocator);
+            allocator.destroy(self);
+        }
 
-    fn deinit(self: *@This(), allocator: std.mem.Allocator) void {
-        if (self.left) |l| l.deinit(allocator);
-        if (self.right) |r| r.deinit(allocator);
+        fn overlapsOrAdjacent(a_low: u64, a_high: u64, b_low: u64, b_high: u64) bool {
+            return !(a_high < b_low - 1 or b_high < a_low - 1);
+        }
 
-        allocator.destroy(self);
-    }
+        pub fn insert(self: *Node, allocator: std.mem.Allocator, low: u64, high: u64) error{OutOfMemory}!void {
+            // Standard BST insert by low (break ties using high)
+            if (high < self.low - 1) {
+                if (self.left) |l| {
+                    try l.insert(allocator, low, high);
+                } else {
+                    self.left = try Node.create(allocator, low, high);
+                }
 
-    fn insert(self: *@This(), allocator: std.mem.Allocator, low: u64, high: u64) !void {
-        if (high < self.low) {
-            // The new node should be created to the left
-            if (self.left) |l| {
-                return try l.insert(allocator, low, high);
-            } else {
-                self.left = try TreeNode.create(allocator, low, high);
+                return;
+            } 
+
+            if (low > self.high + 1) {
+                if (self.right) |r| {
+                    try r.insert(allocator, low, high);
+                } else {
+                    self.right = try Node.create(allocator, low, high);
+                }
+
                 return;
             }
-        } 
 
-        if (low > self.high) {
-            // The new node should be created to the right
-            if (self.right) |r| {
-                return try r.insert(allocator, low, high);
-            } else {
-                self.right = try TreeNode.create(allocator, low, high);
-                return;
+            self.low = @min(self.low, low);
+            self.high = @max(self.high, high);
+
+            try self.mergeWithChildren(allocator);
+        }
+
+        fn mergeWithChildren(self: *Node, allocator: std.mem.Allocator) !void {
+            while (self.left) |l| {
+                if (Node.overlapsOrAdjacent(self.low, self.high, l.low, l.high)) {
+                    const old_left = l;
+                    const left_sub_left = old_left.left;
+                    const left_sub_right = old_left.right;
+
+                    self.low = @min(self.low, old_left.low);
+                    self.high = @max(self.high, old_left.high);
+
+                    self.left = null;
+
+                    allocator.destroy(old_left);
+
+                    if (left_sub_left) |s| try self.appendSubtreeAndFree(allocator, s);
+                    if (left_sub_right) |s| try self.appendSubtreeAndFree(allocator, s);
+                } else {
+                    break;
+                }
+            }
+
+            while (self.right) |r| {
+                if (Node.overlapsOrAdjacent(self.low, self.high, r.low, r.high)) {
+                    const old_right = r;
+                    const right_sub_left = old_right.left;
+                    const right_sub_right = old_right.right;
+
+                    self.low = @min(self.low, old_right.low);
+                    self.high = @max(self.high, old_right.high);
+
+                    self.right = null;
+                    allocator.destroy(old_right);
+
+                    if (right_sub_left) |s| try self.appendSubtreeAndFree(allocator, s);
+                    if (right_sub_right) |s| try self.appendSubtreeAndFree(allocator, s);
+                } else {
+                    break;
+                }
             }
         }
 
-        // Otherwise the ranges overlap => merge!
-        self.low = @min(self.low, low);
-        self.high = @max(self.high, high);
+        fn appendSubtreeAndFree(self: *Node, allocator: std.mem.Allocator, subtree: *Node) !void {
+            const left = subtree.left;
+            const right = subtree.right;
 
-        return;
+            subtree.left = null;
+            subtree.right = null;
+
+            try self.insert(allocator, subtree.low, subtree.high);
+
+            allocator.destroy(subtree);
+
+            if (left) |l| try self.appendSubtreeAndFree(allocator, l);
+            if (right) |r| try self.appendSubtreeAndFree(allocator, r);
+        }
+
+        pub fn contains(self: *const Node, value: u64) bool {
+            if (value < self.low) {
+                if (self.left) |l| {
+                    return l.contains(value);
+                } 
+
+                return false;
+            }
+
+            if (value > self.high) {
+                if (self.right) |r| {
+                    return r.contains(value);
+                }
+
+                return false;
+            }
+
+            return true;
+        }
+
+        pub fn sum(self: *const Node, low_limit: u64, high_limit: u64) u64 {
+            const low_val = @max(self.low, low_limit);
+            const high_val = @min(self.high, high_limit);
+
+            if (low_val > high_val) {
+                return 0;
+            }
+
+            var count: u64 = high_val - low_val + 1;
+
+            if (self.left) |l| {
+                count += l.sum(low_limit, low_val - 1);
+            }
+
+            if (self.right) |r| {
+                count += r.sum(high_val + 1, high_limit);
+            }
+
+            return count;
+        }
+
+        pub fn print(self: *const Node, writer: anytype, depth: usize) !void {
+            if (self.left) |l| try l.print(writer, depth + 1);
+            try writer.splatBytesAll("  ", depth);
+            try writer.print("{d}-{d}\n", .{ self.low, self.high });
+            if (self.right) |r| try r.print(writer, depth + 1);
+        }
+    };
+
+    root: ?*Node = null,
+
+    pub fn insert(self: *IntervalTree, allocator: std.mem.Allocator, low: u64, high: u64) !void {
+        if (self.root) |r| {
+            try r.insert(allocator, low, high);
+        } else {
+            self.root = try Node.create(allocator, low, high);
+        }
     }
 
-    fn find(self: *const @This(), value: u64) bool {
-        if (value < self.low) {
-            // The value must be to the left (or not present)
-            if (self.left) |l| {
-                return l.find(value);
-            } else {
-                return false;
-            }
-        }
+    pub fn contains(self: *const IntervalTree, value: u64) bool {
+        return if (self.root) |r| r.contains(value) else false;
+    }
 
-        if (value > self.high) {
-            // The value must be to the right (or not present)
-            if (self.right) |r| {
-                return r.find(value);
-            } else {
-                return false;
-            }
-        }
+    pub fn sum(self: *const IntervalTree) u64 {
+        return if (self.root) |r| r.sum(0, std.math.maxInt(u64)) else 0;
+    }
 
-        return true;
+    pub fn destroy(self: *IntervalTree, allocator: std.mem.Allocator) void {
+        if (self.root) |r| r.destroy(allocator);
+        self.root = null;
+    }
+
+    pub fn print(self: *const IntervalTree, writer: anytype) !void {
+        if (self.root) |r| {
+            try r.print(writer, 0);
+        } else {
+            try writer.print("(empty)\n", .{});
+        }
     }
 };
 
 pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError![]const u8 {
-    var root: ?*TreeNode = null;
-    defer if (root) |r| r.deinit(allocator);
+    var tree = IntervalTree{};
+    defer tree.destroy(allocator);
     var count: u64 = 0;
 
     var it = std.mem.splitSequence(u8, input[0 .. input.len - 1], "\n\n");
@@ -91,23 +208,39 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
         const low = std.fmt.parseInt(u64, range_it.first(), 10) catch return advent.InputError.InvalidInput;
         const high = std.fmt.parseInt(u64, range_it.rest(), 10) catch return advent.InputError.InvalidInput;
 
-        if (root) |r| {
-            r.insert(allocator, low, high) catch return advent.InputError.InvalidInput;
-        } else {
-            root = TreeNode.create(allocator, low, high) catch return advent.InputError.InvalidInput;
-        }
+        tree.insert(allocator, low, high) catch return advent.InputError.InvalidInput;
     }
 
     var ids_it = std.mem.splitScalar(u8, ids, '\n');
     while (ids_it.next()) |line| {
         const id = std.fmt.parseInt(u64, line, 10) catch return advent.InputError.InvalidInput;
 
-        if (root) |r| {
-            if (r.find(id)) {
-                count += 1;
-            }
+        if (tree.contains(id)) {
+            count += 1;
         }
     }
+
+    const result = std.fmt.allocPrint(allocator, "{d}", .{count}) catch return advent.InputError.InvalidInput;
+    return result;
+}
+
+pub fn part2(allocator: std.mem.Allocator, input: []const u8) advent.InputError![]const u8 {
+    var tree = IntervalTree{};
+    defer tree.destroy(allocator);
+
+    var it = std.mem.splitSequence(u8, input[0 .. input.len - 1], "\n\n");
+    const ranges = it.first();
+
+    var ranges_it = std.mem.splitScalar(u8, ranges, '\n');
+    while (ranges_it.next()) |line| {
+        var range_it = std.mem.splitScalar(u8, line, '-');
+        const low = std.fmt.parseInt(u64, range_it.first(), 10) catch return advent.InputError.InvalidInput;
+        const high = std.fmt.parseInt(u64, range_it.rest(), 10) catch return advent.InputError.InvalidInput;
+
+        tree.insert(allocator, low, high) catch return advent.InputError.InvalidInput;
+    }
+
+    const count = tree.sum();
 
     const result = std.fmt.allocPrint(allocator, "{d}", .{count}) catch return advent.InputError.InvalidInput;
     return result;
