@@ -4,6 +4,7 @@ const day1 = @import("day1.zig");
 const day2 = @import("day2.zig");
 const day3 = @import("day3.zig");
 const day4 = @import("day4.zig");
+const day5 = @import("day5.zig");
 
 fn read_file(allocator: std.mem.Allocator, file_path: []const u8) ![]const u8 {
     const file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
@@ -107,6 +108,15 @@ pub fn main() !void {
 
     try days.append(allocator, d4);
 
+    // Day 5
+    var d5 = InnerArray{};
+    defer d5.deinit(allocator);
+
+    try d5.append(allocator, .{ .f = day5.part1, .file_path = "input/input_day5" });
+    // try d5.append(allocator, .{ .f = day5.part2, .file_path = "input/input_day5" });
+
+    try days.append(allocator, d5);
+
     const day_start: usize = if (day < 0) 0 else @intCast(day - 1);
     const day_end: usize = if (day < 0) days.items.len else @intCast(day);
     for (day_start + 1.., days.items[day_start..day_end]) |i, d| {
@@ -116,8 +126,8 @@ pub fn main() !void {
         const part_end: usize = if (part < 0) d.items.len else @intCast(part);
         for (part_start + 1.., d.items[part_start..part_end]) |j, p| {
             const result = process_file(allocator, p.f, p.file_path) catch |err| switch (err) {
-                advent.InputError.InvalidInput => "Error: InvalidInput",
-                else => "Error: Something went wrong",
+                advent.InputError.InvalidInput => try std.fmt.allocPrint(allocator, "Error: InvalidInput: {}", .{err}),
+                else => try std.fmt.allocPrint(allocator, "Error: Something went wrong: {}", .{err}),
             };
             defer allocator.free(result);
 
@@ -221,4 +231,16 @@ test "day4 part2 test" {
     defer gpa.free(result);
 
     try std.testing.expectEqualStrings("43", result);
+}
+
+test "day5 part1 test" {
+    const gpa = std.testing.allocator;
+
+    const buf = try read_file(gpa, "input/example_day5");
+    defer gpa.free(buf);
+
+    const result = try day5.part1(gpa, buf);
+    defer gpa.free(result);
+
+    try std.testing.expectEqualStrings("3", result);
 }
