@@ -113,7 +113,7 @@ pub fn main() !void {
     defer d5.deinit(allocator);
 
     try d5.append(allocator, .{ .f = day5.part1, .file_path = "input/input_day5" });
-    // try d5.append(allocator, .{ .f = day5.part2, .file_path = "input/input_day5" });
+    try d5.append(allocator, .{ .f = day5.part2, .file_path = "input/input_day5" });
 
     try days.append(allocator, d5);
 
@@ -243,4 +243,16 @@ test "day5 part1 test" {
     defer gpa.free(result);
 
     try std.testing.expectEqualStrings("3", result);
+}
+
+test "day5 part2 test" {
+    const gpa = std.testing.allocator;
+
+    const buf = try read_file(gpa, "input/example_day5");
+    defer gpa.free(buf);
+
+    const result = try day5.part2(gpa, buf);
+    defer gpa.free(result);
+
+    try std.testing.expectEqualStrings("14", result);
 }
