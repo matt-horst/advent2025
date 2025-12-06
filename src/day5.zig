@@ -1,5 +1,5 @@
 const std = @import("std");
-const advent = @import("root.zig");
+const AdventError = @import("root.zig").AdventError;
 
 pub const IntervalTree = struct {
     const Node = struct {
@@ -193,7 +193,7 @@ pub const IntervalTree = struct {
     }
 };
 
-pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError![]const u8 {
+pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]const u8 {
     var tree = IntervalTree{};
     defer tree.destroy(allocator);
     var count: u64 = 0;
@@ -205,26 +205,26 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
     var ranges_it = std.mem.splitScalar(u8, ranges, '\n');
     while (ranges_it.next()) |line| {
         var range_it = std.mem.splitScalar(u8, line, '-');
-        const low = std.fmt.parseInt(u64, range_it.first(), 10) catch return advent.InputError.InvalidInput;
-        const high = std.fmt.parseInt(u64, range_it.rest(), 10) catch return advent.InputError.InvalidInput;
+        const low = std.fmt.parseInt(u64, range_it.first(), 10) catch return AdventError.ParseError;
+        const high = std.fmt.parseInt(u64, range_it.rest(), 10) catch return AdventError.ParseError;
 
-        tree.insert(allocator, low, high) catch return advent.InputError.InvalidInput;
+        tree.insert(allocator, low, high) catch return AdventError.OutOfMemory;
     }
 
     var ids_it = std.mem.splitScalar(u8, ids, '\n');
     while (ids_it.next()) |line| {
-        const id = std.fmt.parseInt(u64, line, 10) catch return advent.InputError.InvalidInput;
+        const id = std.fmt.parseInt(u64, line, 10) catch return AdventError.ParseError;
 
         if (tree.contains(id)) {
             count += 1;
         }
     }
 
-    const result = std.fmt.allocPrint(allocator, "{d}", .{count}) catch return advent.InputError.InvalidInput;
+    const result = std.fmt.allocPrint(allocator, "{d}", .{count}) catch return AdventError.OutOfMemory;
     return result;
 }
 
-pub fn part2(allocator: std.mem.Allocator, input: []const u8) advent.InputError![]const u8 {
+pub fn part2(allocator: std.mem.Allocator, input: []const u8) AdventError![]const u8 {
     var tree = IntervalTree{};
     defer tree.destroy(allocator);
 
@@ -234,14 +234,14 @@ pub fn part2(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
     var ranges_it = std.mem.splitScalar(u8, ranges, '\n');
     while (ranges_it.next()) |line| {
         var range_it = std.mem.splitScalar(u8, line, '-');
-        const low = std.fmt.parseInt(u64, range_it.first(), 10) catch return advent.InputError.InvalidInput;
-        const high = std.fmt.parseInt(u64, range_it.rest(), 10) catch return advent.InputError.InvalidInput;
+        const low = std.fmt.parseInt(u64, range_it.first(), 10) catch return AdventError.ParseError;
+        const high = std.fmt.parseInt(u64, range_it.rest(), 10) catch return AdventError.ParseError;
 
-        tree.insert(allocator, low, high) catch return advent.InputError.InvalidInput;
+        tree.insert(allocator, low, high) catch return AdventError.OutOfMemory;
     }
 
     const count = tree.sum();
 
-    const result = std.fmt.allocPrint(allocator, "{d}", .{count}) catch return advent.InputError.InvalidInput;
+    const result = std.fmt.allocPrint(allocator, "{d}", .{count}) catch return AdventError.OutOfMemory;
     return result;
 }

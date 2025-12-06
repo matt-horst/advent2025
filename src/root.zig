@@ -1,3 +1,6 @@
 const std = @import("std");
 
-pub const InputError = error{InvalidInput};
+pub const AdventError = error{
+    ParseError,
+    OutOfMemory
+};

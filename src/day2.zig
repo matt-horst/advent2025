@@ -1,14 +1,14 @@
 const std = @import("std");
-const advent = @import("root.zig");
+const AdventError = @import("root.zig").AdventError;
 
-pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError![]const u8 {
+pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]const u8 {
     var count: u64 = 0;
 
     var it = std.mem.splitScalar(u8, input[0 .. input.len - 1], ',');
     while (it.next()) |pair| {
-        const idx = std.mem.indexOfScalar(u8, pair, '-') orelse return advent.InputError.InvalidInput;
-        const lhs = std.fmt.parseInt(usize, pair[0..idx], 10) catch return advent.InputError.InvalidInput;
-        const rhs = std.fmt.parseInt(usize, pair[idx + 1 ..], 10) catch return advent.InputError.InvalidInput;
+        const idx = std.mem.indexOfScalar(u8, pair, '-') orelse return AdventError.ParseError;
+        const lhs = std.fmt.parseInt(usize, pair[0..idx], 10) catch return AdventError.ParseError;
+        const rhs = std.fmt.parseInt(usize, pair[idx + 1 ..], 10) catch return AdventError.ParseError;
 
         const max_len = pair.len - idx - 1;
 
@@ -24,7 +24,7 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
         }
     }
 
-    const ans = std.fmt.allocPrint(allocator, "{d}", .{count}) catch return advent.InputError.InvalidInput;
+    const ans = std.fmt.allocPrint(allocator, "{d}", .{count}) catch return AdventError.OutOfMemory;
     return ans;
 }
 
@@ -71,16 +71,16 @@ fn repeat_pattern(pattern: u64, pattern_len: usize, count: usize) u64 {
     return total;
 }
 
-pub fn part2(allocator: std.mem.Allocator, input: []const u8) advent.InputError![]const u8 {
+pub fn part2(allocator: std.mem.Allocator, input: []const u8) AdventError![]const u8 {
     var count: u64 = 0;
     var hm = std.AutoHashMap(usize, bool).init(allocator);
     defer hm.deinit();
 
     var it = std.mem.splitScalar(u8, input[0 .. input.len - 1], ',');
     while (it.next()) |pair| {
-        const idx = std.mem.indexOfScalar(u8, pair, '-') orelse return advent.InputError.InvalidInput;
-        const lhs = std.fmt.parseInt(usize, pair[0..idx], 10) catch return advent.InputError.InvalidInput;
-        const rhs = std.fmt.parseInt(usize, pair[idx + 1 ..], 10) catch return advent.InputError.InvalidInput;
+        const idx = std.mem.indexOfScalar(u8, pair, '-') orelse return AdventError.ParseError;
+        const lhs = std.fmt.parseInt(usize, pair[0..idx], 10) catch return AdventError.ParseError;
+        const rhs = std.fmt.parseInt(usize, pair[idx + 1 ..], 10) catch return AdventError.ParseError;
 
         const max_len = pair.len - idx - 1;
         const min_len = idx;
@@ -108,11 +108,11 @@ pub fn part2(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
 
                 count += val;
 
-                hm.put(val, true) catch return advent.InputError.InvalidInput;
+                hm.put(val, true) catch return AdventError.OutOfMemory;
             }
         }
     }
 
-    const ans = std.fmt.allocPrint(allocator, "{d}", .{count}) catch return advent.InputError.InvalidInput;
+    const ans = std.fmt.allocPrint(allocator, "{d}", .{count}) catch return AdventError.OutOfMemory;
     return ans;
 }

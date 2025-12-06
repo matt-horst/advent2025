@@ -1,7 +1,7 @@
 const std = @import("std");
-const advent = @import("root.zig");
+const AdventError = @import("root.zig").AdventError;
 
-pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError![]const u8 {
+pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]const u8 {
     const range = 100;
     var position: i32 = 50;
     var count: i32 = 0;
@@ -13,7 +13,7 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
 
         const c = line[0];
         const n = std.fmt.parseInt(i32, line[1..], 10) catch {
-            return advent.InputError.InvalidInput;
+            return AdventError.ParseError;
         };
         switch (c) {
             'L' => {
@@ -23,7 +23,7 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
                 position = @rem(position + n, range);
             },
             else => {
-                return advent.InputError.InvalidInput;
+                return AdventError.ParseError;
             },
         }
 
@@ -32,11 +32,11 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
         }
     }
 
-    const ans = std.fmt.allocPrint(allocator, "{d}", .{count}) catch return advent.InputError.InvalidInput;
+    const ans = std.fmt.allocPrint(allocator, "{d}", .{count}) catch return AdventError.OutOfMemory;
     return ans;
 }
 
-pub fn part2(allocator: std.mem.Allocator, input: []const u8) advent.InputError![]const u8 {
+pub fn part2(allocator: std.mem.Allocator, input: []const u8) AdventError![]const u8 {
     const range = 100;
     var position: i32 = 50;
     var count: i32 = 0;
@@ -48,7 +48,7 @@ pub fn part2(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
 
         const c = line[0];
         const n = std.fmt.parseInt(i32, line[1..], 10) catch {
-            return advent.InputError.InvalidInput;
+            return AdventError.ParseError;
         };
 
         count += @divTrunc(n, range);
@@ -74,11 +74,11 @@ pub fn part2(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
                 position = @rem(after, range);
             },
             else => {
-                return advent.InputError.InvalidInput;
+                return AdventError.ParseError;
             },
         }
     }
 
-    const ans = std.fmt.allocPrint(allocator, "{d}", .{count}) catch return advent.InputError.InvalidInput;
+    const ans = std.fmt.allocPrint(allocator, "{d}", .{count}) catch return AdventError.OutOfMemory;
     return ans;
 }
