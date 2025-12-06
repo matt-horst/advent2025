@@ -20,7 +20,7 @@ fn read_file(allocator: std.mem.Allocator, file_path: []const u8) ![]const u8 {
     return buf;
 }
 
-fn process_file(allocator: std.mem.Allocator, f: *const fn (allocator: std.mem.Allocator, input: []const u8) advent.InputError![]const u8, file_path: []const u8) ![]const u8 {
+fn process_file(allocator: std.mem.Allocator, f: *const fn (allocator: std.mem.Allocator, input: []const u8) advent.AdventError![]const u8, file_path: []const u8) ![]const u8 {
     const buf = try read_file(allocator, file_path);
     defer allocator.free(buf);
 
@@ -69,7 +69,7 @@ pub fn main() !void {
         }
     }
 
-    const InnerArray = std.ArrayList(struct { f: *const fn (allocator: std.mem.Allocator, input: []const u8) advent.InputError![]const u8, file_path: []const u8 });
+    const InnerArray = std.ArrayList(struct { f: *const fn (allocator: std.mem.Allocator, input: []const u8) advent.AdventError![]const u8, file_path: []const u8 });
     var days = std.ArrayList(InnerArray){};
     defer days.deinit(allocator);
 
@@ -135,9 +135,9 @@ pub fn main() !void {
         const part_start: usize = if (part < 0) 0 else @intCast(part - 1);
         const part_end: usize = if (part < 0) d.items.len else @intCast(part);
         for (part_start + 1.., d.items[part_start..part_end]) |j, p| {
-            const result = process_file(allocator, p.f, p.file_path) catch |err| switch (err) {
-                advent.InputError.InvalidInput => try std.fmt.allocPrint(allocator, "Error: InvalidInput: {}", .{err}),
-                else => try std.fmt.allocPrint(allocator, "Error: Something went wrong: {}", .{err}),
+            const result = process_file(allocator, p.f, p.file_path) catch |err| {
+                std.debug.print("error: {any}\n", .{err});
+                continue;
             };
             defer allocator.free(result);
 

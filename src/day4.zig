@@ -1,7 +1,7 @@
 const std = @import("std");
-const advent = @import("root.zig");
+const AdventError = @import("root.zig").AdventError;
 
-pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError![]const u8 {
+pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]const u8 {
     var total: i32 = 0;
     var map = std.ArrayList(std.ArrayList(u8)){};
     defer {
@@ -15,9 +15,9 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
     while (it.next()) |line| {
         var item = std.ArrayList(u8){};
         for (line) |c| {
-            item.append(allocator, c) catch return advent.InputError.InvalidInput;
+            item.append(allocator, c) catch return AdventError.OutOfMemory;
         }
-        map.append(allocator, item) catch return advent.InputError.InvalidInput;
+        map.append(allocator, item) catch return AdventError.OutOfMemory;
     }
 
     const n = map.items.len;
@@ -44,11 +44,11 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
         }
     }
 
-    const buf = std.fmt.allocPrint(allocator, "{d}", .{total}) catch return advent.InputError.InvalidInput;
+    const buf = std.fmt.allocPrint(allocator, "{d}", .{total}) catch return AdventError.OutOfMemory;
     return buf;
 }
 
-pub fn part2(allocator: std.mem.Allocator, input: []const u8) advent.InputError![]const u8 {
+pub fn part2(allocator: std.mem.Allocator, input: []const u8) AdventError![]const u8 {
     var total: i32 = 0;
     var map = std.ArrayList(std.ArrayList(u8)){};
     defer {
@@ -62,9 +62,9 @@ pub fn part2(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
     while (it.next()) |line| {
         var item = std.ArrayList(u8){};
         for (line) |c| {
-            item.append(allocator, c) catch return advent.InputError.InvalidInput;
+            item.append(allocator, c) catch return AdventError.OutOfMemory;
         }
-        map.append(allocator, item) catch return advent.InputError.InvalidInput;
+        map.append(allocator, item) catch return AdventError.OutOfMemory;
     }
 
     const n = map.items.len;
@@ -108,6 +108,6 @@ pub fn part2(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
         total += sub_total;
     }
 
-    const buf = std.fmt.allocPrint(allocator, "{d}", .{total}) catch return advent.InputError.InvalidInput;
+    const buf = std.fmt.allocPrint(allocator, "{d}", .{total}) catch return AdventError.OutOfMemory;
     return buf;
 }

@@ -1,7 +1,7 @@
 const std = @import("std");
-const advent = @import("root.zig");
+const AdventError = @import("root.zig").AdventError;
 
-pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError![]const u8 {
+pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]const u8 {
     var it = std.mem.splitBackwardsScalar(u8, input[0 .. input.len - 1], '\n');
     const ops_line = it.first();
 
@@ -11,19 +11,19 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
     var ops_it = std.mem.tokenizeScalar(u8, ops_line, ' ');
     while (ops_it.next()) |item| {
         if (item.len != 1) {
-            return advent.InputError.InvalidInput;
+            return AdventError.ParseError;
         }
 
         const op: Op = switch (item[0]) {
             '+' => .add,
             '*' => .mul,
-            else => return advent.InputError.InvalidInput,
+            else => return AdventError.ParseError,
         };
 
-        ops_list.append(allocator, op) catch return advent.InputError.InvalidInput;
+        ops_list.append(allocator, op) catch return AdventError.OutOfMemory;
     }
 
-    var totals = allocator.alloc(u64, ops_list.items.len) catch return advent.InputError.InvalidInput;
+    var totals = allocator.alloc(u64, ops_list.items.len) catch return AdventError.OutOfMemory;
     defer allocator.free(totals);
     for (0.., ops_list.items) |i, op| {
         switch (op) {
@@ -36,7 +36,7 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
         var line_it = std.mem.tokenizeScalar(u8, line, ' ');
         var i: usize = 0;
         while (line_it.next()) |item| {
-            const value = std.fmt.parseInt(u64, item, 10) catch return advent.InputError.InvalidInput;
+            const value = std.fmt.parseInt(u64, item, 10) catch return AdventError.ParseError;
             switch (ops_list.items[i]) {
                 .add => totals[i] += value,
                 .mul => totals[i] *= value,
@@ -50,11 +50,11 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
         total += v;
     }
 
-    const buf = std.fmt.allocPrint(allocator, "{d}", .{total}) catch return advent.InputError.InvalidInput;
+    const buf = std.fmt.allocPrint(allocator, "{d}", .{total}) catch return AdventError.OutOfMemory;
     return buf;
 }
 
-pub fn part2(allocator: std.mem.Allocator, input: []const u8) advent.InputError![]const u8 {
+pub fn part2(allocator: std.mem.Allocator, input: []const u8) AdventError![]const u8 {
     var it = std.mem.splitBackwardsScalar(u8, input[0 .. input.len - 1], '\n');
     const ops_line = it.first();
 
@@ -72,7 +72,7 @@ pub fn part2(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
             continue;
         } else {
             if (curr_width != 0) {
-                widths.append(allocator, curr_width) catch return advent.InputError.InvalidInput;
+                widths.append(allocator, curr_width) catch return AdventError.OutOfMemory;
             }
             curr_width = 1;
         }
@@ -80,14 +80,14 @@ pub fn part2(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
         const op: Op = switch (item[0]) {
             '+' => .add,
             '*' => .mul,
-            else => return advent.InputError.InvalidInput,
+            else => return AdventError.ParseError,
         };
 
-        ops_list.append(allocator, op) catch return advent.InputError.InvalidInput;
+        ops_list.append(allocator, op) catch return AdventError.OutOfMemory;
     }
-    widths.append(allocator, curr_width) catch return advent.InputError.InvalidInput;
+    widths.append(allocator, curr_width) catch return AdventError.OutOfMemory;
 
-    var numbers = allocator.alloc([]u64, ops_list.items.len) catch return advent.InputError.InvalidInput;
+    var numbers = allocator.alloc([]u64, ops_list.items.len) catch return AdventError.OutOfMemory;
     defer {
         for (numbers) |num| {
             allocator.free(num);
@@ -96,7 +96,7 @@ pub fn part2(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
     }
 
     for (0.., widths.items) |i, w| {
-        numbers[i] = allocator.alloc(u64, w) catch return advent.InputError.InvalidInput;
+        numbers[i] = allocator.alloc(u64, w) catch return AdventError.OutOfMemory;
         for (0.., numbers[i]) |j, _| {
             numbers[i][j] = 0;
         }
@@ -142,7 +142,7 @@ pub fn part2(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
         total += sub_total;
     }
 
-    const buf = std.fmt.allocPrint(allocator, "{d}", .{total}) catch return advent.InputError.InvalidInput;
+    const buf = std.fmt.allocPrint(allocator, "{d}", .{total}) catch return AdventError.OutOfMemory;
     return buf;
 }
 

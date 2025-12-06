@@ -1,7 +1,7 @@
 const std = @import("std");
-const advent = @import("root.zig");
+const AdventError = @import("root.zig").AdventError;
 
-pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError![]const u8 {
+pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]const u8 {
     var sum: i32 = 0;
 
     var it = std.mem.splitScalar(u8, input, '\n');
@@ -19,16 +19,16 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
         sum += max_num;
     }
 
-    const buf = std.fmt.allocPrint(allocator, "{d}", .{sum}) catch return advent.InputError.InvalidInput;
+    const buf = std.fmt.allocPrint(allocator, "{d}", .{sum}) catch return AdventError.OutOfMemory;
     return buf;
 }
 
-pub fn part2(allocator: std.mem.Allocator, input: []const u8) advent.InputError![]const u8 {
+pub fn part2(allocator: std.mem.Allocator, input: []const u8) AdventError![]const u8 {
     var sum: u64 = 0;
 
     var it = std.mem.splitScalar(u8, input, '\n');
     while (it.next()) |line| {
-        var dp = allocator.alloc([12]u64, line.len + 1) catch return advent.InputError.InvalidInput;
+        var dp = allocator.alloc([12]u64, line.len + 1) catch return AdventError.OutOfMemory;
         defer allocator.free(dp);
 
         for (0..12) |i| {
@@ -47,6 +47,6 @@ pub fn part2(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
         sum += joltage;
     }
 
-    const buf = std.fmt.allocPrint(allocator, "{d}", .{sum}) catch return advent.InputError.InvalidInput;
+    const buf = std.fmt.allocPrint(allocator, "{d}", .{sum}) catch return AdventError.OutOfMemory;
     return buf;
 }
