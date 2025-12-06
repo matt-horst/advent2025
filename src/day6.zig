@@ -10,14 +10,16 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
 
     var ops_it = std.mem.tokenizeScalar(u8, ops_line, ' ');
     while (ops_it.next()) |item| {
-        var op: Op = undefined;
-        if (std.mem.eql(u8, item, "+")) {
-            op = .add;
-        } else if (std.mem.eql(u8, item, "*")) {
-            op = .mul;
-        } else {
+        if (item.len != 1) {
             return advent.InputError.InvalidInput;
         }
+
+        const op: Op = switch (item[0]) {
+            '+' => .add,
+            '*' => .mul,
+            else => return advent.InputError.InvalidInput,
+        };
+
         ops_list.append(allocator, op) catch return advent.InputError.InvalidInput;
     }
 
@@ -74,15 +76,13 @@ pub fn part2(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
             }
             curr_width = 1;
         }
-        var op: Op = undefined;
-        if (std.mem.eql(u8, item, "+")) {
-            op = .add;
-        } else if (std.mem.eql(u8, item, "*")) {
-            // } else {
-            op = .mul;
-        } else {
-            return advent.InputError.InvalidInput;
-        }
+
+        const op: Op = switch (item[0]) {
+            '+' => .add,
+            '*' => .mul,
+            else => return advent.InputError.InvalidInput,
+        };
+
         ops_list.append(allocator, op) catch return advent.InputError.InvalidInput;
     }
     widths.append(allocator, curr_width) catch return advent.InputError.InvalidInput;
