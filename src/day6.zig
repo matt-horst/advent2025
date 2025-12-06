@@ -14,7 +14,6 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
         if (std.mem.eql(u8, item, "+")) {
             op = .add;
         } else if (std.mem.eql(u8, item, "*")) {
-            // } else {
             op = .mul;
         } else {
             return advent.InputError.InvalidInput;
@@ -53,4 +52,98 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) advent.InputError!
     return buf;
 }
 
-const Op = enum { add, mul };
+pub fn part2(allocator: std.mem.Allocator, input: []const u8) advent.InputError![]const u8 {
+    var it = std.mem.splitBackwardsScalar(u8, input[0 .. input.len - 1], '\n');
+    const ops_line = it.first();
+
+    var ops_list = std.ArrayList(Op){};
+    defer ops_list.deinit(allocator);
+
+    var widths = std.ArrayList(usize){};
+    defer widths.deinit(allocator);
+
+    var ops_it = std.mem.splitScalar(u8, ops_line, ' ');
+    var curr_width: usize = 0;
+    while (ops_it.next()) |item| {
+        if (item.len == 0) {
+            curr_width += 1;
+            continue;
+        } else {
+            if (curr_width != 0) {
+                widths.append(allocator, curr_width) catch return advent.InputError.InvalidInput;
+            }
+            curr_width = 1;
+        }
+        var op: Op = undefined;
+        if (std.mem.eql(u8, item, "+")) {
+            op = .add;
+        } else if (std.mem.eql(u8, item, "*")) {
+            // } else {
+            op = .mul;
+        } else {
+            return advent.InputError.InvalidInput;
+        }
+        ops_list.append(allocator, op) catch return advent.InputError.InvalidInput;
+    }
+    widths.append(allocator, curr_width) catch return advent.InputError.InvalidInput;
+
+    var numbers = allocator.alloc([]u64, ops_list.items.len) catch return advent.InputError.InvalidInput;
+    defer {
+        for (numbers) |num| {
+            allocator.free(num);
+        }
+        allocator.free(numbers);
+    }
+
+    for (0.., widths.items) |i, w| {
+        numbers[i] = allocator.alloc(u64, w) catch return advent.InputError.InvalidInput;
+        for (0.., numbers[i]) |j, _| {
+            numbers[i][j] = 0;
+        }
+    }
+
+    const rest = it.rest();
+    var rest_it = std.mem.splitScalar(u8, rest, '\n');
+    while (rest_it.next()) |line| {
+        var i: usize = 0;
+        var j: usize = 0;
+
+        for (line) |c| {
+            if (j < widths.items[i]) {
+                if (std.ascii.isDigit(c)) {
+                    numbers[i][j] *= 10;
+                    numbers[i][j] += c - '0';
+                }
+
+                j += 1;
+            } else {
+                i += 1;
+                j = 0;
+                continue;
+            }
+        }
+    }
+
+    var total: u64 = 0;
+    for (0.., numbers) |i, blk| {
+        const op = ops_list.items[i];
+        var sub_total: u64 = switch (op) {
+            .add => 0,
+            .mul => 1,
+        };
+
+        for (blk) |v| {
+            switch (op) {
+                .add => sub_total += v,
+                .mul => sub_total *= v,
+            }
+        }
+
+        total += sub_total;
+    }
+
+    const buf = std.fmt.allocPrint(allocator, "{d}", .{total}) catch return advent.InputError.InvalidInput;
+    return buf;
+}
+
+const Op = enum(u8) { add = '+', mul = '*' };
