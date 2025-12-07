@@ -1,5 +1,6 @@
 const std = @import("std");
-const AdventError = @import("root.zig").AdventError;
+const advent = @import("root.zig");
+const AdventError = advent.AdventError;
 
 pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]const u8 {
     var it = std.mem.splitBackwardsScalar(u8, input[0 .. input.len - 1], '\n');
@@ -147,3 +148,27 @@ pub fn part2(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
 }
 
 const Op = enum(u8) { add = '+', mul = '*' };
+
+test "day6 part1 test" {
+    const gpa = std.testing.allocator;
+
+    const buf = try advent.read_file(gpa, "input/example_day6");
+    defer gpa.free(buf);
+
+    const result = try part1(gpa, buf);
+    defer gpa.free(result);
+
+    try std.testing.expectEqualStrings("4277556", result);
+}
+
+test "day6 part2 test" {
+    const gpa = std.testing.allocator;
+
+    const buf = try advent.read_file(gpa, "input/example_day6");
+    defer gpa.free(buf);
+
+    const result = try part2(gpa, buf);
+    defer gpa.free(result);
+
+    try std.testing.expectEqualStrings("3263827", result);
+}
