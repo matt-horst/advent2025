@@ -1,5 +1,6 @@
 const std = @import("std");
-const AdventError = @import("root.zig").AdventError;
+const advent = @import("root.zig");
+const AdventError = advent.AdventError;
 
 pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]const u8 {
     var total: i32 = 0;
@@ -110,4 +111,28 @@ pub fn part2(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
 
     const buf = std.fmt.allocPrint(allocator, "{d}", .{total}) catch return AdventError.OutOfMemory;
     return buf;
+}
+
+test "day4 part1 test" {
+    const gpa = std.testing.allocator;
+
+    const buf = try advent.read_file(gpa, "input/example_day4");
+    defer gpa.free(buf);
+
+    const result = try part1(gpa, buf);
+    defer gpa.free(result);
+
+    try std.testing.expectEqualStrings("13", result);
+}
+
+test "day4 part2 test" {
+    const gpa = std.testing.allocator;
+
+    const buf = try advent.read_file(gpa, "input/example_day4");
+    defer gpa.free(buf);
+
+    const result = try part2(gpa, buf);
+    defer gpa.free(result);
+
+    try std.testing.expectEqualStrings("43", result);
 }

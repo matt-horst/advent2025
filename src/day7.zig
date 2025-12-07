@@ -1,5 +1,6 @@
 const std = @import("std");
-const AdventError = @import("root.zig").AdventError;
+const advent = @import("root.zig");
+const AdventError = advent.AdventError;
 
 pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]const u8 {
     var it = std.mem.splitScalar(u8, input, '\n');
@@ -65,7 +66,7 @@ fn print(line: []const Loc) void {
 }
 
 pub fn part2(allocator: std.mem.Allocator, input: []const u8) AdventError![]const u8 {
-    var it = std.mem.splitScalar(u8, input[0..input.len - 1], '\n');
+    var it = std.mem.splitScalar(u8, input[0 .. input.len - 1], '\n');
     const first_line = it.first();
     const width = first_line.len;
     const start = std.mem.indexOfScalar(u8, first_line, 'S') orelse return AdventError.ParseError;
@@ -131,4 +132,28 @@ fn print_part2(line: []const i64) void {
         }
     }
     std.debug.print("\n", .{});
+}
+
+test "day7 part1 test" {
+    const gpa = std.testing.allocator;
+
+    const buf = try advent.read_file(gpa, "input/example_day7");
+    defer gpa.free(buf);
+
+    const result = try part1(gpa, buf);
+    defer gpa.free(result);
+
+    try std.testing.expectEqualStrings("21", result);
+}
+
+test "day7 part2 test" {
+    const gpa = std.testing.allocator;
+
+    const buf = try advent.read_file(gpa, "input/example_day7");
+    defer gpa.free(buf);
+
+    const result = try part2(gpa, buf);
+    defer gpa.free(result);
+
+    try std.testing.expectEqualStrings("40", result);
 }

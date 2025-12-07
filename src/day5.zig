@@ -1,5 +1,6 @@
 const std = @import("std");
-const AdventError = @import("root.zig").AdventError;
+const advent = @import("root.zig");
+const AdventError = advent.AdventError;
 
 pub const IntervalTree = struct {
     const Node = struct {
@@ -38,7 +39,7 @@ pub const IntervalTree = struct {
                 }
 
                 return;
-            } 
+            }
 
             if (low > self.high + 1) {
                 if (self.right) |r| {
@@ -116,7 +117,7 @@ pub const IntervalTree = struct {
             if (value < self.low) {
                 if (self.left) |l| {
                     return l.contains(value);
-                } 
+                }
 
                 return false;
             }
@@ -244,4 +245,28 @@ pub fn part2(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
 
     const result = std.fmt.allocPrint(allocator, "{d}", .{count}) catch return AdventError.OutOfMemory;
     return result;
+}
+
+test "day5 part1 test" {
+    const gpa = std.testing.allocator;
+
+    const buf = try advent.read_file(gpa, "input/example_day5");
+    defer gpa.free(buf);
+
+    const result = try part1(gpa, buf);
+    defer gpa.free(result);
+
+    try std.testing.expectEqualStrings("3", result);
+}
+
+test "day5 part2 test" {
+    const gpa = std.testing.allocator;
+
+    const buf = try advent.read_file(gpa, "input/example_day5");
+    defer gpa.free(buf);
+
+    const result = try part2(gpa, buf);
+    defer gpa.free(result);
+
+    try std.testing.expectEqualStrings("14", result);
 }
