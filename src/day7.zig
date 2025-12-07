@@ -20,7 +20,6 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
 
     var total: i32 = 0;
 
-    print(prev);
     while (it.next()) |line| {
         for (0.., line) |i, c| {
             curr[i] = @enumFromInt(c);
@@ -49,7 +48,6 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
         const tmp = prev;
         prev = curr;
         curr = tmp;
-        print(prev);
     }
 
     const buf = std.fmt.allocPrint(allocator, "{d}", .{total}) catch return AdventError.OutOfMemory;
@@ -58,7 +56,7 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
 
 const Loc = enum(u8) { empty = '.', beam = '|', splitter = '^' };
 
-fn print(line: []const Loc) void {
+fn print_part1(line: []const Loc) void {
     for (line) |c| {
         std.debug.print("{c}", .{@intFromEnum(c)});
     }
@@ -81,7 +79,6 @@ pub fn part2(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
     var curr: []i64 = allocator.alloc(i64, width) catch return AdventError.OutOfMemory;
     defer allocator.free(curr);
 
-    print_part2(prev);
     while (it.next()) |line| {
         for (0.., line) |i, c| {
             curr[i] = switch (c) {
@@ -106,7 +103,6 @@ pub fn part2(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
                 }
             }
         }
-        print_part2(curr);
         const tmp = prev;
         prev = curr;
         curr = tmp;
