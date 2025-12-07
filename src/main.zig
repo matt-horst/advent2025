@@ -8,26 +8,6 @@ const day5 = @import("day5.zig");
 const day6 = @import("day6.zig");
 const day7 = @import("day7.zig");
 
-fn read_file(allocator: std.mem.Allocator, file_path: []const u8) ![]const u8 {
-    const file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
-    defer file.close();
-
-    const stat = try file.stat();
-    const file_size = stat.size;
-
-    const buf: []u8 = try allocator.alloc(u8, file_size);
-    _ = try file.read(buf);
-
-    return buf;
-}
-
-fn process_file(allocator: std.mem.Allocator, f: *const fn (allocator: std.mem.Allocator, input: []const u8) advent.AdventError![]const u8, file_path: []const u8) ![]const u8 {
-    const buf = try read_file(allocator, file_path);
-    defer allocator.free(buf);
-
-    return f(allocator, buf);
-}
-
 const Arg = enum {
     day,
     part,
@@ -70,7 +50,7 @@ pub fn main() !void {
         }
     }
 
-    const InnerArray = std.ArrayList(struct { f: *const fn (allocator: std.mem.Allocator, input: []const u8) advent.AdventError![]const u8, file_path: []const u8 });
+    const InnerArray = std.ArrayList(struct { f: *const advent.AdventFn, file_path: []const u8 });
     var days = std.ArrayList(InnerArray){};
     defer days.deinit(allocator);
 
@@ -145,7 +125,7 @@ pub fn main() !void {
         const part_start: usize = if (part < 0) 0 else @intCast(part - 1);
         const part_end: usize = if (part < 0) d.items.len else @intCast(part);
         for (part_start + 1.., d.items[part_start..part_end]) |j, p| {
-            const result = process_file(allocator, p.f, p.file_path) catch |err| {
+            const result = advent.process_file(allocator, p.f, p.file_path) catch |err| {
                 std.debug.print("error: {any}\n", .{err});
                 continue;
             };
@@ -160,7 +140,7 @@ pub fn main() !void {
 test "day1 part1 test" {
     const gpa = std.testing.allocator;
 
-    const buf = try read_file(gpa, "input/example_day1");
+    const buf = try advent.read_file(gpa, "input/example_day1");
     defer gpa.free(buf);
 
     const result = try day1.part1(gpa, buf);
@@ -172,7 +152,7 @@ test "day1 part1 test" {
 test "day1 part2 test" {
     const gpa = std.testing.allocator;
 
-    const buf = try read_file(gpa, "input/example_day1");
+    const buf = try advent.read_file(gpa, "input/example_day1");
     defer gpa.free(buf);
 
     const result = try day1.part2(gpa, buf);
@@ -184,7 +164,7 @@ test "day1 part2 test" {
 test "day2 part1 test" {
     const gpa = std.testing.allocator;
 
-    const buf = try read_file(gpa, "input/example_day2");
+    const buf = try advent.read_file(gpa, "input/example_day2");
     defer gpa.free(buf);
 
     const result = try day2.part1(gpa, buf);
@@ -196,7 +176,7 @@ test "day2 part1 test" {
 test "day2 part2 test" {
     const gpa = std.testing.allocator;
 
-    const buf = try read_file(gpa, "input/example_day2");
+    const buf = try advent.read_file(gpa, "input/example_day2");
     defer gpa.free(buf);
 
     const result = try day2.part2(gpa, buf);
@@ -208,7 +188,7 @@ test "day2 part2 test" {
 test "day3 part1 test" {
     const gpa = std.testing.allocator;
 
-    const buf = try read_file(gpa, "input/example_day3");
+    const buf = try advent.read_file(gpa, "input/example_day3");
     defer gpa.free(buf);
 
     const result = try day3.part1(gpa, buf);
@@ -220,7 +200,7 @@ test "day3 part1 test" {
 test "day3 part2 test" {
     const gpa = std.testing.allocator;
 
-    const buf = try read_file(gpa, "input/example_day3");
+    const buf = try advent.read_file(gpa, "input/example_day3");
     defer gpa.free(buf);
 
     const result = try day3.part2(gpa, buf);
@@ -232,7 +212,7 @@ test "day3 part2 test" {
 test "day4 part1 test" {
     const gpa = std.testing.allocator;
 
-    const buf = try read_file(gpa, "input/example_day4");
+    const buf = try advent.read_file(gpa, "input/example_day4");
     defer gpa.free(buf);
 
     const result = try day4.part1(gpa, buf);
@@ -244,7 +224,7 @@ test "day4 part1 test" {
 test "day4 part2 test" {
     const gpa = std.testing.allocator;
 
-    const buf = try read_file(gpa, "input/example_day4");
+    const buf = try advent.read_file(gpa, "input/example_day4");
     defer gpa.free(buf);
 
     const result = try day4.part2(gpa, buf);
@@ -256,7 +236,7 @@ test "day4 part2 test" {
 test "day5 part1 test" {
     const gpa = std.testing.allocator;
 
-    const buf = try read_file(gpa, "input/example_day5");
+    const buf = try advent.read_file(gpa, "input/example_day5");
     defer gpa.free(buf);
 
     const result = try day5.part1(gpa, buf);
@@ -268,7 +248,7 @@ test "day5 part1 test" {
 test "day5 part2 test" {
     const gpa = std.testing.allocator;
 
-    const buf = try read_file(gpa, "input/example_day5");
+    const buf = try advent.read_file(gpa, "input/example_day5");
     defer gpa.free(buf);
 
     const result = try day5.part2(gpa, buf);
@@ -280,7 +260,7 @@ test "day5 part2 test" {
 test "day6 part1 test" {
     const gpa = std.testing.allocator;
 
-    const buf = try read_file(gpa, "input/example_day6");
+    const buf = try advent.read_file(gpa, "input/example_day6");
     defer gpa.free(buf);
 
     const result = try day6.part1(gpa, buf);
@@ -292,7 +272,7 @@ test "day6 part1 test" {
 test "day6 part2 test" {
     const gpa = std.testing.allocator;
 
-    const buf = try read_file(gpa, "input/example_day6");
+    const buf = try advent.read_file(gpa, "input/example_day6");
     defer gpa.free(buf);
 
     const result = try day6.part2(gpa, buf);
@@ -304,7 +284,7 @@ test "day6 part2 test" {
 test "day7 part1 test" {
     const gpa = std.testing.allocator;
 
-    const buf = try read_file(gpa, "input/example_day7");
+    const buf = try advent.read_file(gpa, "input/example_day7");
     defer gpa.free(buf);
 
     const result = try day7.part1(gpa, buf);
@@ -316,7 +296,7 @@ test "day7 part1 test" {
 test "day7 part2 test" {
     const gpa = std.testing.allocator;
 
-    const buf = try read_file(gpa, "input/example_day7");
+    const buf = try advent.read_file(gpa, "input/example_day7");
     defer gpa.free(buf);
 
     const result = try day7.part2(gpa, buf);
