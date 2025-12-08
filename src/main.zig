@@ -7,6 +7,7 @@ const day4 = @import("day4.zig");
 const day5 = @import("day5.zig");
 const day6 = @import("day6.zig");
 const day7 = @import("day7.zig");
+const day8 = @import("day8.zig");
 
 const Arg = enum {
     day,
@@ -116,6 +117,15 @@ pub fn main() !void {
     try d7.append(allocator, .{ .f = day7.part2, .file_path = "input/input_day7" });
 
     try days.append(allocator, d7);
+
+    // Day 8
+    var d8 = InnerArray{};
+    defer d8.deinit(allocator);
+
+    try d8.append(allocator, .{ .f = day8.part1, .file_path = "input/input_day8" });
+    // try d8.append(allocator, .{ .f = day8.part2, .file_path = "input/input_day8" });
+
+    try days.append(allocator, d8);
 
     const day_start: usize = if (day < 0) 0 else @intCast(day - 1);
     const day_end: usize = if (day < 0) days.items.len else @intCast(day);
