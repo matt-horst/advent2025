@@ -21,7 +21,7 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
 
     const count = boxes.items.len;
     const limit = 10;
-    var min_max_heap = MinMaxHeap(i32).create(allocator, limit) catch return AdventError.OutOfMemory;
+    var min_max_heap = MinMaxHeap(BoxDist).create(allocator, limit, BoxDist.cmp) catch return AdventError.OutOfMemory;
 
     for (0..count) |i| {
         for (i + 1..count) |j| {
@@ -34,30 +34,48 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
 
             if (min_max_heap.len < min_max_heap.cap) {
                 std.debug.print("inserting\n", .{});
-                try min_max_heap.insert(dist);
+                try min_max_heap.insert(.{ .a = a, .b = b, .dist = dist });
             } else {
                 const max = min_max_heap.peekMax();
                 if (max) |m| {
-                    if (dist < m) {
+                    if (dist < m.dist) {
                         std.debug.print("inserting\n", .{});
                         _ = min_max_heap.extractMax();
-                        try min_max_heap.insert(dist);
+                        try min_max_heap.insert(.{ .a = a, .b = b, .dist = dist });
                     }
                 } else {
                     std.debug.print("skipping\n", .{});
-                    try min_max_heap.insert(dist);
+                    try min_max_heap.insert(.{ .a = a, .b = b, .dist = dist });
                 }
             }
         }
     }
 
     while (min_max_heap.extractMin()) |min| {
-        std.debug.print("extracting: {}\n", .{min});
+        std.debug.print("extracting: {any}\n", .{min});
     }
 
     const buf = std.fmt.allocPrint(allocator, "{d}", .{total}) catch return AdventError.OutOfMemory;
     return buf;
 }
+const BoxDist = struct {
+    a: [3]i32,
+    b: [3]i32,
+    dist: i32,
+
+    const Self = @This();
+
+    fn cmp(self: Self, other: Self) Cmp {
+        if (self.dist > other.dist) return .gt;
+        if (self.dist < other.dist) return .lt;
+
+        return .eq;
+    }
+
+    pub fn format(self: Self, writer: anytype, _: std.fmt.FormatOptions) !void {
+        try writer.print("({}, {}, {}) -> ({}, {}, {}) = {}", .{self.a[0], self.a[1], self.a[2], self.b[0], self.b[1], self.b[2], self.dist});
+    }
+};
 
 fn distance(a: [3]i32, b: [3]i32) i32 {
     var total: i32 = 0;
@@ -68,17 +86,21 @@ fn distance(a: [3]i32, b: [3]i32) i32 {
     return total;
 }
 
+const Cmp = enum { lt, eq, gt };
+
 fn MinMaxHeap(comptime T: type) type {
+    const CmpFn = fn (T, T) Cmp;
     return struct {
         items: []T,
         len: usize = 0,
         cap: usize,
+        cmp: *const CmpFn,
 
         const Self = @This();
 
-        pub fn create(allocator: std.mem.Allocator, n: usize) !Self {
+        pub fn create(allocator: std.mem.Allocator, n: usize, cmp: *const CmpFn) !Self {
             const items = try allocator.alloc(T, n);
-            return .{ .items = items, .cap = n };
+            return .{ .items = items, .cap = n, .cmp = cmp };
         }
 
         pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
@@ -107,11 +129,11 @@ fn MinMaxHeap(comptime T: type) type {
         }
 
         pub fn extractMax(self: *Self) ?T {
-            const i = switch (self.len) {
+            const i: usize = switch (self.len) {
                 0 => return null,
                 1 => 0,
                 2 => 1,
-                else => std.mem.indexOfMax(T, self.items[1..3]),
+                else => if (self.cmp(self.items[1], self.items[2]) == .gt) 1 else 2,
             };
 
             const v = self.items[i];
@@ -128,7 +150,7 @@ fn MinMaxHeap(comptime T: type) type {
                 0 => return null,
                 1 => return self.items[0],
                 2 => return self.items[1],
-                else => return std.mem.max(T, self.items[1..3]),
+                else => return if (self.cmp(self.items[1], self.items[2]) == .gt) self.items[1] else self.items[2],
             }
         }
 
@@ -145,15 +167,17 @@ fn MinMaxHeap(comptime T: type) type {
             const min = self.findMinChildOrGrandchild(i);
             if (min) |m| {
                 if (m > 2 * i + 2) {
-                    if (self.items[m] < self.items[i]) {
+                    if (self.cmp(self.items[m], self.items[i]) == .lt) {
                         std.mem.swap(T, &self.items[i], &self.items[m]);
                         const p = (m - 1) / 2;
-                        if (self.items[m] > self.items[p]) {
+                        // if (self.items[m] > self.items[p]) {
+                        if (self.cmp(self.items[m], self.items[p]) == .gt) {
                             std.mem.swap(T, &self.items[m], &self.items[p]);
                         }
                         self.pushDown(m);
                     }
-                } else if (self.items[m] < self.items[i]) {
+                    // } else if (self.items[m] < self.items[i]) {
+                } else if (self.cmp(self.items[m], self.items[i]) == .lt) {
                     std.mem.swap(T, &self.items[i], &self.items[m]);
                 }
             }
@@ -166,7 +190,8 @@ fn MinMaxHeap(comptime T: type) type {
                 if (c >= self.len) break;
 
                 if (min) |m| {
-                    if (self.items[c] < self.items[m]) {
+                    // if (self.items[c] < self.items[m]) {
+                    if (self.cmp(self.items[c], self.items[m]) == .lt) {
                         min = c;
                     }
                 } else {
@@ -179,7 +204,8 @@ fn MinMaxHeap(comptime T: type) type {
                 if (gc >= self.len) break;
 
                 if (min) |m| {
-                    if (self.items[gc] < self.items[m]) {
+                    // if (self.items[gc] < self.items[m]) {
+                    if (self.cmp(self.items[gc], self.items[m]) == .lt) {
                         min = gc;
                     }
                 } else {
@@ -197,24 +223,26 @@ fn MinMaxHeap(comptime T: type) type {
                 if (c >= self.len) break;
 
                 if (max) |m| {
-                    if (self.items[c] > self.items[m]) {
+                    // if (self.items[c] > self.items[m]) {
+                    if (self.cmp(self.items[c], self.items[m]) == .gt) {
                         max = c;
                     }
                 } else {
                     max = c;
                 }
+            }
 
-                for (1..3) |k| {
-                    const gc = 2 * c + k;
-                    if (gc >= self.len) break;
+            for (3..7) |j| {
+                const gc = 4 * i + j;
+                if (gc >= self.len) break;
 
-                    if (max) |m| {
-                        if (self.items[gc] > self.items[m]) {
-                            max = gc;
-                        }
-                    } else {
+                if (max) |m| {
+                    // if (self.items[gc] < self.items[m]) {
+                    if (self.cmp(self.items[gc], self.items[m]) == .gt) {
                         max = gc;
                     }
+                } else {
+                    max = gc;
                 }
             }
 
@@ -225,15 +253,18 @@ fn MinMaxHeap(comptime T: type) type {
             const max = self.findMaxChildOrGrandchild(i);
             if (max) |m| {
                 if (m > 2 * i + 2) {
-                    if (self.items[m] > self.items[i]) {
+                    // if (self.items[m] > self.items[i]) {
+                    if (self.cmp(self.items[m], self.items[i]) == .gt) {
                         std.mem.swap(T, &self.items[i], &self.items[m]);
                         const p = (m - 1) / 2;
-                        if (self.items[m] < self.items[p]) {
+                        // if (self.items[m] < self.items[p]) {
+                        if (self.cmp(self.items[m], self.items[p]) == .lt) {
                             std.mem.swap(T, &self.items[m], &self.items[p]);
                         }
                         self.pushDown(m);
                     }
-                } else if (self.items[m] > self.items[i]) {
+                    // } else if (self.items[m] > self.items[i]) {
+                } else if (self.cmp(self.items[m], self.items[i]) == .gt) {
                     std.mem.swap(T, &self.items[i], &self.items[m]);
                 }
             }
@@ -245,14 +276,16 @@ fn MinMaxHeap(comptime T: type) type {
             const level: usize = @intFromFloat(@floor(@log2(@as(f64, @floatFromInt(i + 1)))));
             const p = (i - 1) / 2;
             if (level % 2 == 0) {
-                if (self.items[i] > self.items[p]) {
+                // if (self.items[i] > self.items[p]) {
+                if (self.cmp(self.items[i], self.items[p]) == .gt) {
                     std.mem.swap(T, &self.items[i], &self.items[p]);
                     self.pushUpMax(p);
                 } else {
                     self.pushUpMin(i);
                 }
             } else {
-                if (self.items[i] < self.items[p]) {
+                // if (self.items[i] < self.items[p]) {
+                if (self.cmp(self.items[i], self.items[p]) == .lt) {
                     std.mem.swap(T, &self.items[i], &self.items[p]);
                     self.pushUpMin(p);
                 } else {
@@ -266,7 +299,8 @@ fn MinMaxHeap(comptime T: type) type {
 
             const p = (i - 1) / 2;
             const gp = (i - 1) / 4;
-            if (p > 0 and self.items[i] < self.items[gp]) {
+            // if (p > 0 and self.items[i] < self.items[gp]) {
+            if (p > 0 and self.cmp(self.items[i], self.items[gp]) == .lt) {
                 std.mem.swap(T, &self.items[i], &self.items[gp]);
                 self.pushUpMin(gp);
             }
@@ -276,7 +310,8 @@ fn MinMaxHeap(comptime T: type) type {
             if (i == 0) return;
             const p = (i - 1) / 2;
             const gp = (i - 1) / 4;
-            if (p > 0 and self.items[i] > self.items[gp]) {
+            // if (p > 0 and self.items[i] > self.items[gp]) {
+            if (p > 0 and self.cmp(self.items[i], self.items[gp]) == .gt) {
                 std.mem.swap(T, &self.items[i], &self.items[gp]);
                 self.pushUpMax(gp);
             }
