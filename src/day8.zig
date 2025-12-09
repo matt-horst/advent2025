@@ -105,6 +105,88 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
     return buf;
 }
 
+pub fn part2(allocator: std.mem.Allocator, input: []const u8) AdventError![]const u8 {
+    var boxes = std.ArrayList([3]i64){};
+    defer boxes.deinit(allocator);
+
+    var it = std.mem.tokenizeScalar(u8, input, '\n');
+    while (it.next()) |line| {
+        var line_it = std.mem.tokenizeScalar(u8, line, ',');
+        const x = std.fmt.parseInt(i64, line_it.next() orelse return AdventError.ParseError, 10) catch return AdventError.ParseError;
+        const y = std.fmt.parseInt(i64, line_it.next() orelse return AdventError.ParseError, 10) catch return AdventError.ParseError;
+        const z = std.fmt.parseInt(i64, line_it.next() orelse return AdventError.ParseError, 10) catch return AdventError.ParseError;
+
+        const pos = [3]i64{ x, y, z };
+        boxes.append(allocator, pos) catch return AdventError.OutOfMemory;
+    }
+
+    const count = boxes.items.len;
+    var dists = std.ArrayList(BoxDist){};
+    defer dists.deinit(allocator);
+
+    for (0..count) |i| {
+        for (i + 1..count) |j| {
+            const a = boxes.items[i];
+            const b = boxes.items[j];
+
+            const dist = distance(a, b);
+
+            const box = BoxDist{ .a = i, .b = j, .dist = dist };
+
+            dists.append(allocator, box) catch return AdventError.OutOfMemory;
+        }
+    }
+
+    const lt = struct {
+        fn cmp(_: void, a: BoxDist, b: BoxDist) bool {
+            return a.dist < b.dist;
+        }
+    }.cmp;
+
+    std.mem.sort(BoxDist, dists.items, {}, lt);
+
+    var ds = DisjointSet{};
+    defer ds.deinit(allocator);
+    var set_ids = std.AutoHashMap(usize, usize).init(allocator);
+    defer set_ids.deinit();
+
+    var final: ?BoxDist = null;
+    for (dists.items) |min| {
+        var a_id = set_ids.get(min.a);
+        if (a_id == null) {
+            const id = ds.makeSet(allocator) catch return AdventError.OutOfMemory;
+            set_ids.put(min.a, id) catch return AdventError.OutOfMemory;
+            a_id = id;
+        }
+
+        var b_id = set_ids.get(min.b);
+        if (b_id == null) {
+            const id = ds.makeSet(allocator) catch return AdventError.OutOfMemory;
+            set_ids.put(min.b, id) catch return AdventError.OutOfMemory;
+            b_id = id;
+        }
+
+        ds.merge(a_id.?, b_id.?) catch return AdventError.ParseError;
+
+        const root = ds.find(0).?;
+        if (ds.nodes.items[root].size == boxes.items.len) {
+            std.debug.print("found: {any}\n", .{min});
+            final = min;
+            break;
+        }
+    }
+
+    if (final) |f| {
+        std.debug.print("final: {any}\n", .{f});
+        const value = boxes.items[f.a][0] * boxes.items[f.b][0];
+        const buf = std.fmt.allocPrint(allocator, "{d}", .{value}) catch return AdventError.OutOfMemory;
+        return buf;
+    }
+
+    return AdventError.ParseError;
+
+}
+
 fn size_cmp(a: i64, b: i64) Cmp {
     if (a < b) return .lt;
     if (a > b) return .gt;
@@ -453,4 +535,13 @@ test "test day 8 part 1" {
     defer gpa.free(result);
 
     try std.testing.expectEqualStrings("40", result);
+}
+
+test "test day 8 part 2" {
+    const gpa = std.testing.allocator;
+
+    const result = try advent.process_file(gpa, part2, "input/example_day8");
+    defer gpa.free(result);
+
+    try std.testing.expectEqualStrings("25272", result);
 }
