@@ -133,7 +133,7 @@ pub fn main() !void {
     defer d9.deinit(allocator);
 
     try d9.append(allocator, .{ .f = day9.part1, .file_path = "input/input_day9" });
-    // try d9.append(allocator, .{ .f = day9.part2, .file_path = "input/input_day9" });
+    try d9.append(allocator, .{ .f = day9.part2, .file_path = "input/input_day9" });
 
     try days.append(allocator, d9);
 

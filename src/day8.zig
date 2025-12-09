@@ -170,14 +170,12 @@ pub fn part2(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
 
         const root = ds.find(0).?;
         if (ds.nodes.items[root].size == boxes.items.len) {
-            std.debug.print("found: {any}\n", .{min});
             final = min;
             break;
         }
     }
 
     if (final) |f| {
-        std.debug.print("final: {any}\n", .{f});
         const value = boxes.items[f.a][0] * boxes.items[f.b][0];
         const buf = std.fmt.allocPrint(allocator, "{d}", .{value}) catch return AdventError.OutOfMemory;
         return buf;
