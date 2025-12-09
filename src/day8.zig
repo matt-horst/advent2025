@@ -3,25 +3,26 @@ const advent = @import("root.zig");
 const AdventError = advent.AdventError;
 
 pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]const u8 {
-    const total: i32 = 0;
+    var total: i64 = 1;
 
-    var boxes = std.ArrayList([3]i32){};
+    var boxes = std.ArrayList([3]i64){};
     defer boxes.deinit(allocator);
 
     var it = std.mem.tokenizeScalar(u8, input, '\n');
     while (it.next()) |line| {
         var line_it = std.mem.tokenizeScalar(u8, line, ',');
-        const x = std.fmt.parseInt(i32, line_it.next() orelse return AdventError.ParseError, 10) catch return AdventError.ParseError;
-        const y = std.fmt.parseInt(i32, line_it.next() orelse return AdventError.ParseError, 10) catch return AdventError.ParseError;
-        const z = std.fmt.parseInt(i32, line_it.next() orelse return AdventError.ParseError, 10) catch return AdventError.ParseError;
+        const x = std.fmt.parseInt(i64, line_it.next() orelse return AdventError.ParseError, 10) catch return AdventError.ParseError;
+        const y = std.fmt.parseInt(i64, line_it.next() orelse return AdventError.ParseError, 10) catch return AdventError.ParseError;
+        const z = std.fmt.parseInt(i64, line_it.next() orelse return AdventError.ParseError, 10) catch return AdventError.ParseError;
 
-        const pos = [3]i32{ x, y, z };
+        const pos = [3]i64{ x, y, z };
         boxes.append(allocator, pos) catch return AdventError.OutOfMemory;
     }
 
     const count = boxes.items.len;
-    const limit = 10;
+    const limit = 1000;
     var min_max_heap = MinMaxHeap(BoxDist).create(allocator, limit, BoxDist.cmp) catch return AdventError.OutOfMemory;
+    defer min_max_heap.deinit(allocator);
 
     for (0..count) |i| {
         for (i + 1..count) |j| {
@@ -30,38 +31,102 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
 
             const dist = distance(a, b);
 
-            std.debug.print("({}, {}, {}) -> ({}, {}, {}) = {}\n", .{ a[0], a[1], a[2], b[0], b[1], b[2], dist });
+            const box = BoxDist{ .a = i, .b = j, .dist = dist };
 
             if (min_max_heap.len < min_max_heap.cap) {
-                std.debug.print("inserting\n", .{});
-                try min_max_heap.insert(.{ .a = a, .b = b, .dist = dist });
+                try min_max_heap.insert(box);
             } else {
                 const max = min_max_heap.peekMax();
                 if (max) |m| {
                     if (dist < m.dist) {
-                        std.debug.print("inserting\n", .{});
                         _ = min_max_heap.extractMax();
-                        try min_max_heap.insert(.{ .a = a, .b = b, .dist = dist });
+                        try min_max_heap.insert(box);
                     }
                 } else {
-                    std.debug.print("skipping\n", .{});
-                    try min_max_heap.insert(.{ .a = a, .b = b, .dist = dist });
+                    try min_max_heap.insert(box);
                 }
             }
         }
     }
 
+    var ds = DisjointSet{};
+    defer ds.deinit(allocator);
+    var set_ids = std.AutoHashMap(usize, usize).init(allocator);
+    defer set_ids.deinit();
     while (min_max_heap.extractMin()) |min| {
-        std.debug.print("extracting: {any}\n", .{min});
+        std.debug.print("min: {any}\n", .{min});
+        var a_id = set_ids.get(min.a);
+        if (a_id == null) {
+            const id = ds.makeSet(allocator) catch return AdventError.OutOfMemory;
+            set_ids.put(min.a, id) catch return AdventError.OutOfMemory;
+            a_id = id;
+        }
+
+        var b_id = set_ids.get(min.b);
+        if (b_id == null) {
+            const id = ds.makeSet(allocator) catch return AdventError.OutOfMemory;
+            set_ids.put(min.b, id) catch return AdventError.OutOfMemory;
+            b_id = id;
+        }
+
+        ds.merge(a_id.?, b_id.?) catch return AdventError.ParseError;
+    }
+
+    var set_it = set_ids.iterator();
+    while (set_it.next()) |kv| {
+        const k = kv.key_ptr;
+        const v = kv.value_ptr;
+        const p = boxes.items[k.*];
+
+        std.debug.print("k: {}, p: ({any}), v: {}\n", .{ k.*, p, v.* });
+    }
+
+    var seen = std.AutoHashMap(usize, void).init(allocator);
+    defer seen.deinit();
+
+    var size_min_max = MinMaxHeap(i64).create(allocator, 3, size_cmp) catch return AdventError.OutOfMemory;
+    defer size_min_max.deinit(allocator);
+
+    for (0.., ds.nodes.items) |i, _| {
+        const root = ds.find(i).?;
+        std.debug.print("root: {}, size: {}\n", .{ root, ds.nodes.items[root] });
+        std.debug.print("min-max= {any}\n\n", .{size_min_max.items});
+
+        if (seen.contains(root)) continue;
+        seen.put(root, {}) catch return AdventError.OutOfMemory;
+
+        const size: i64 = @intCast(ds.nodes.items[root].size);
+
+        if (size_min_max.len == size_min_max.cap) {
+            const min = size_min_max.peekMin().?;
+            if (size > min) {
+                _ = size_min_max.extractMin();
+                size_min_max.insert(size) catch return AdventError.ParseError;
+            }
+        } else {
+            size_min_max.insert(size) catch return AdventError.ParseError;
+        }
+    }
+
+    while (size_min_max.extractMax()) |max| {
+        std.debug.print("max: {}\n", .{max});
+        total *= max;
     }
 
     const buf = std.fmt.allocPrint(allocator, "{d}", .{total}) catch return AdventError.OutOfMemory;
     return buf;
 }
+
+fn size_cmp(a: i64, b: i64) Cmp {
+    if (a < b) return .lt;
+    if (a > b) return .gt;
+    return .eq;
+}
+
 const BoxDist = struct {
-    a: [3]i32,
-    b: [3]i32,
-    dist: i32,
+    a: usize,
+    b: usize,
+    dist: i64,
 
     const Self = @This();
 
@@ -73,12 +138,12 @@ const BoxDist = struct {
     }
 
     pub fn format(self: Self, writer: anytype, _: std.fmt.FormatOptions) !void {
-        try writer.print("({}, {}, {}) -> ({}, {}, {}) = {}", .{self.a[0], self.a[1], self.a[2], self.b[0], self.b[1], self.b[2], self.dist});
+        try writer.print("({}) -> ({}) = {}", .{ self.a, self.b, self.dist });
     }
 };
 
-fn distance(a: [3]i32, b: [3]i32) i32 {
-    var total: i32 = 0;
+fn distance(a: [3]i64, b: [3]i64) i64 {
+    var total: i64 = 0;
     for (0..3) |i| {
         const diff = a[i] - b[i];
         total += diff * diff;
@@ -154,9 +219,14 @@ fn MinMaxHeap(comptime T: type) type {
             }
         }
 
+        pub fn peekMin(self: *Self) ?T {
+            if (self.len == 0) return null;
+
+            return self.items[0];
+        }
+
         fn pushDown(self: *Self, i: usize) void {
-            const level: usize = @intFromFloat(@floor(@log2(@as(f64, @floatFromInt(i + 1)))));
-            if (level % 2 == 0) {
+            if (level(i) % 2 == 0) {
                 self.pushDownMin(i);
             } else {
                 self.pushDownMax(i);
@@ -270,12 +340,20 @@ fn MinMaxHeap(comptime T: type) type {
             }
         }
 
+        fn level(i: usize) usize {
+            var v = i + 1;
+            var lvl: usize = 0;
+            while (v > 1) : (v >>= 1) {
+                lvl += 1;
+            }
+            return lvl;
+        }
+
         fn pushUp(self: *Self, i: usize) void {
             if (i == 0) return;
 
-            const level: usize = @intFromFloat(@floor(@log2(@as(f64, @floatFromInt(i + 1)))));
             const p = (i - 1) / 2;
-            if (level % 2 == 0) {
+            if (level(i) % 2 == 0) {
                 // if (self.items[i] > self.items[p]) {
                 if (self.cmp(self.items[i], self.items[p]) == .gt) {
                     std.mem.swap(T, &self.items[i], &self.items[p]);
@@ -296,11 +374,15 @@ fn MinMaxHeap(comptime T: type) type {
 
         fn pushUpMin(self: *Self, i: usize) void {
             if (i == 0) return;
+            if (i == 0) return;
 
             const p = (i - 1) / 2;
-            const gp = (i - 1) / 4;
+            if (p == 0) {
+                return;
+            }
+            const gp = (p - 1) / 2;
             // if (p > 0 and self.items[i] < self.items[gp]) {
-            if (p > 0 and self.cmp(self.items[i], self.items[gp]) == .lt) {
+            if (self.cmp(self.items[i], self.items[gp]) == .lt) {
                 std.mem.swap(T, &self.items[i], &self.items[gp]);
                 self.pushUpMin(gp);
             }
@@ -309,15 +391,70 @@ fn MinMaxHeap(comptime T: type) type {
         fn pushUpMax(self: *Self, i: usize) void {
             if (i == 0) return;
             const p = (i - 1) / 2;
-            const gp = (i - 1) / 4;
+            if (p == 0) {
+                return;
+            }
+            const gp = (p - 1) / 2;
             // if (p > 0 and self.items[i] > self.items[gp]) {
-            if (p > 0 and self.cmp(self.items[i], self.items[gp]) == .gt) {
+            if (self.cmp(self.items[i], self.items[gp]) == .gt) {
                 std.mem.swap(T, &self.items[i], &self.items[gp]);
                 self.pushUpMax(gp);
             }
         }
     };
 }
+
+const DisjointSet = struct {
+    nodes: std.ArrayList(Node) = std.ArrayList(Node).empty,
+
+    const Self = @This();
+
+    pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
+        self.nodes.deinit(allocator);
+    }
+
+    pub fn find(self: *Self, id: usize) ?usize {
+        if (id < self.nodes.items.len) {
+            var n = self.nodes.items[id];
+            if (n.parent) |p| {
+                n.parent = self.find(p).?;
+                return n.parent;
+            }
+
+            return id;
+        }
+
+        return null;
+    }
+
+    pub fn merge(self: *Self, a: usize, b: usize) !void {
+        const a_root = self.find(a) orelse return error.InvalidID;
+        const b_root = self.find(b) orelse return error.InvalidID;
+
+        if (a_root == b_root) return;
+
+        var a_node = &self.nodes.items[a_root];
+        var b_node = &self.nodes.items[b_root];
+        if (a_node.size < b_node.size) {
+            a_node.parent = b_root;
+            b_node.size += a_node.size;
+        } else {
+            b_node.parent = a_root;
+            a_node.size += b_node.size;
+        }
+    }
+
+    pub fn makeSet(self: *Self, allocator: std.mem.Allocator) !usize {
+        const node: Node = .{};
+        try self.nodes.append(allocator, node);
+        return self.nodes.items.len - 1;
+    }
+
+    const Node = struct {
+        parent: ?usize = null,
+        size: usize = 1,
+    };
+};
 
 test "test day 8 part 1" {
     const gpa = std.testing.allocator;
