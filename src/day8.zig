@@ -2,6 +2,8 @@ const std = @import("std");
 const advent = @import("root.zig");
 const AdventError = advent.AdventError;
 
+var limit: usize = 1000;
+
 pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]const u8 {
     var total: i64 = 1;
 
@@ -20,7 +22,6 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
     }
 
     const count = boxes.items.len;
-    const limit = 1000;
     var min_max_heap = MinMaxHeap(BoxDist).create(allocator, limit, BoxDist.cmp) catch return AdventError.OutOfMemory;
     defer min_max_heap.deinit(allocator);
 
@@ -54,7 +55,6 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
     var set_ids = std.AutoHashMap(usize, usize).init(allocator);
     defer set_ids.deinit();
     while (min_max_heap.extractMin()) |min| {
-        std.debug.print("min: {any}\n", .{min});
         var a_id = set_ids.get(min.a);
         if (a_id == null) {
             const id = ds.makeSet(allocator) catch return AdventError.OutOfMemory;
@@ -72,15 +72,6 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
         ds.merge(a_id.?, b_id.?) catch return AdventError.ParseError;
     }
 
-    var set_it = set_ids.iterator();
-    while (set_it.next()) |kv| {
-        const k = kv.key_ptr;
-        const v = kv.value_ptr;
-        const p = boxes.items[k.*];
-
-        std.debug.print("k: {}, p: ({any}), v: {}\n", .{ k.*, p, v.* });
-    }
-
     var seen = std.AutoHashMap(usize, void).init(allocator);
     defer seen.deinit();
 
@@ -89,8 +80,6 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
 
     for (0.., ds.nodes.items) |i, _| {
         const root = ds.find(i).?;
-        std.debug.print("root: {}, size: {}\n", .{ root, ds.nodes.items[root] });
-        std.debug.print("min-max= {any}\n\n", .{size_min_max.items});
 
         if (seen.contains(root)) continue;
         seen.put(root, {}) catch return AdventError.OutOfMemory;
@@ -109,7 +98,6 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
     }
 
     while (size_min_max.extractMax()) |max| {
-        std.debug.print("max: {}\n", .{max});
         total *= max;
     }
 
@@ -458,6 +446,8 @@ const DisjointSet = struct {
 
 test "test day 8 part 1" {
     const gpa = std.testing.allocator;
+
+    limit = 10;
 
     const result = try advent.process_file(gpa, part1, "input/example_day8");
     defer gpa.free(result);
