@@ -142,8 +142,8 @@ pub fn main() !void {
     var d10 = InnerArray{};
     defer d10.deinit(allocator);
 
-    try d10.append(allocator, .{ .f = day10.part1, .file_path = "input/input_day10" });
-    // try d10.append(allocator, .{ .f = day10.part2, .file_path = "input/input_day10" });
+    // try d10.append(allocator, .{ .f = day10.part1, .file_path = "input/input_day10" });
+    try d10.append(allocator, .{ .f = day10.part2, .file_path = "input/input_day10" });
 
     try days.append(allocator, d10);
 

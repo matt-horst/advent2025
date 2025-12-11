@@ -1,6 +1,6 @@
 const std = @import("std");
 
-pub const AdventError = error{ ParseError, OutOfMemory };
+pub const AdventError = error{ ParseError, OutOfMemory, Overflow };
 
 pub const AdventFn = fn (std.mem.Allocator, []const u8) AdventError![]const u8;
 

@@ -3,150 +3,88 @@ const advent = @import("root.zig");
 const AdventError = advent.AdventError;
 
 pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]const u8 {
-    var total: u32 = 0;
+    const total: u64 = 0;
+    _ = input;
 
+    // var it = std.mem.tokenizeScalar(u8, input, '\n');
+    // main: while (it.next()) |line| {
+    //     const cfg = try MachineConfig.parse(allocator, line);
+    //     defer cfg.deinit(allocator);
+    //
+    //     var seen = std.AutoHashMap(u64, void).init(allocator);
+    //     defer seen.deinit();
+    //
+    //     var queue = Queue(struct { id: u64, depth: u64 }).init(allocator);
+    //     defer queue.deinit();
+    //     queue.pushRight(.{ .id = 0, .depth = 0 }) catch return AdventError.OutOfMemory;
+    //
+    //     while (queue.popLeft()) |node| {
+    //         if (seen.get(node.id) != null) continue;
+    //
+    //         seen.put(node.id, {}) catch return AdventError.OutOfMemory;
+    //
+    //         for (cfg.buttons) |btn| {
+    //             const adj = toggle(node.id, btn);
+    //             queue.pushRight(.{ .id = adj, .depth = node.depth + 1 }) catch return AdventError.OutOfMemory;
+    //
+    //             if (adj == cfg.lights) {
+    //                 total += node.depth + 1;
+    //                 continue :main;
+    //             }
+    //         }
+    //     }
+    // }
+
+    const buf = std.fmt.allocPrint(allocator, "{}", .{total});
+    return buf;
+}
+
+pub fn part2(allocator: std.mem.Allocator, input: []const u8) AdventError![]const u8 {
+    const total: u64 = 0;
     var it = std.mem.tokenizeScalar(u8, input, '\n');
-    main: while (it.next()) |line| {
+    while (it.next()) |line| {
         const cfg = try MachineConfig.parse(allocator, line);
         defer cfg.deinit(allocator);
 
-        var seen = std.AutoHashMap(u32, void).init(allocator);
-        defer seen.deinit();
+        const factors = try calcFactors(allocator, cfg.jolts);
+        defer allocator.free(factors);
 
-        var queue = Queue(struct { id: u32, depth: u32 }).init(allocator);
-        defer queue.deinit();
-        queue.pushRight(.{ .id = 0, .depth = 0 }) catch return AdventError.OutOfMemory;
+        const coins = try convertToCoins(allocator, factors, cfg.buttons);
+        defer allocator.free(coins);
 
-        while (queue.popLeft()) |node| {
-            if (seen.get(node.id) != null) continue;
+        const target = convertToTarget(factors, cfg.jolts);
 
-            seen.put(node.id, {}) catch return AdventError.OutOfMemory;
-
-            for (cfg.buttons) |btn| {
-                const adj = toggle(node.id, btn);
-                queue.pushRight(.{ .id = adj, .depth = node.depth + 1 }) catch return AdventError.OutOfMemory;
-
-                if (adj == cfg.lights) {
-                    total += node.depth + 1;
-                    continue :main;
-                }
-            }
-        }
+        std.debug.print("factors: {any}, coins: {any}, target: {}\n", .{factors, coins, target});
+        // const ans = try makeChange(allocator, coins, target);
+        // std.debug.print("{}\n", .{ans});
+        // total += @intCast(ans);
     }
 
     const buf = std.fmt.allocPrint(allocator, "{}", .{total});
     return buf;
 }
 
-fn Queue(comptime T: type) type {
-    return struct {
-        first: ?*Node = null,
-        last: ?*Node = null,
-        allocator: std.mem.Allocator,
+fn makeChange(allocator: std.mem.Allocator, coins: []u64, target: u64) !u64 {
+    var dp = allocator.alloc(u64, target + 1) catch return AdventError.OutOfMemory;
+    defer allocator.free(dp);
+    @memset(dp, std.math.maxInt(u64) - 1);
 
-        const Self = @This();
+    dp[0] = 0;
 
-        pub fn popRight(self: *Self) ?T {
-            if (self.last) |last| {
-                if (last.prev) |prev| prev.next = null;
-                if (self.first == self.last) {
-                    self.first = null;
-                }
-                self.last = last.prev;
-
-                const v = last.payload;
-
-                self.allocator.destroy(last);
-
-                return v;
+    for (1..@intCast(target + 1)) |i| {
+        for (coins) |coin| {
+            if (i >= coin) {
+                dp[i] = @min(dp[i], 1 + dp[i - coin]);
             }
-
-            return null;
         }
+    }
 
-        pub fn popLeft(self: *Self) ?T {
-            if (self.first) |first| {
-                if (first.next) |next| next.prev = null;
-                if (self.first == self.last) {
-                    self.last = null;
-                }
-                self.first = first.next;
-
-                const v = first.payload;
-
-                self.allocator.destroy(first);
-
-                return v;
-            }
-
-            return null;
-        }
-
-        pub fn pushLeft(self: *Self, v: T) !void {
-            const node = try Node.create(self.allocator, v, null, self.first);
-
-            if (self.first) |first| first.next = node;
-
-            self.first = node;
-            if (self.last == null) self.last = node;
-        }
-
-        pub fn pushRight(self: *Self, v: T) !void {
-            const node = try Node.create(self.allocator, v, self.last, null);
-
-            if (self.last) |last| last.next = node;
-
-            if (self.first == null) self.first = node;
-            self.last = node;
-        }
-
-        pub fn isEmpty(self: *Self) bool {
-            return self.first == null;
-        }
-
-        pub fn init(allocator: std.mem.Allocator) Self {
-            return .{ .allocator = allocator };
-        }
-
-        pub fn deinit(self: *Self) void {
-            while (self.popLeft()) |_| {}
-        }
-
-        pub fn print(self: *Self) void {
-            var node: ?*Node = self.first;
-            while (node) |n| {
-                std.debug.print("{}, ", .{n.payload});
-                node = n.next;
-            }
-
-            std.debug.print("\n", .{});
-        }
-
-        const Node = struct {
-            payload: T,
-            next: ?*Node,
-            prev: ?*Node,
-
-            pub fn create(allocator: std.mem.Allocator, payload: T, prev: ?*Node, next: ?*Node) !*Node {
-                const node = try allocator.create(Node);
-                node.* = .{
-                    .payload = payload,
-                    .prev = prev,
-                    .next = next,
-                };
-                return node;
-            }
-        };
-    };
+    return if (dp[target] >= std.math.maxInt(u64) - 1) AdventError.ParseError else dp[target];
 }
 
-fn toggle(light: u32, button: u32) u32 {
-    return (light & ~button) | (~light & button);
-}
-
-fn parseLights(input: []const u8) !u32 {
-    var lights: u32 = 0;
-    const one: u32 = 1;
+fn parseLights(input: []const u8) ![]u64 {
+    var lights: u64 = 0;
+    const one: u64 = 1;
 
     for (0.., input) |i, c| {
         switch (c) {
@@ -159,35 +97,34 @@ fn parseLights(input: []const u8) !u32 {
     return lights;
 }
 
-fn parseButton(input: []const u8) !u32 {
-    var button: u32 = 0;
-    const one: u32 = 1;
+fn parseArray(comptime T: type, allocator: std.mem.Allocator, input: []const u8) ![]T {
+    var lst = std.ArrayList(T){};
+    defer lst.deinit(allocator);
+
     var it = std.mem.tokenizeScalar(u8, input, ',');
     while (it.next()) |item| {
-        const v = std.fmt.parseInt(u5, item, 10) catch return AdventError.ParseError;
-        button |= one << v;
+        const v = std.fmt.parseInt(T, item, 10) catch return AdventError.ParseError;
+        lst.append(allocator, v) catch return AdventError.OutOfMemory;
     }
 
-    return button;
-}
+    const jolts = allocator.alloc(T, lst.items.len) catch return AdventError.OutOfMemory;
+    @memcpy(jolts, lst.items);
 
-fn parseJolts(input: []const u8) ![]u32 {
-    _ = input;
-    return AdventError.ParseError;
+    return jolts;
 }
 
 const MachineConfig = struct {
-    lights: u32,
-    buttons: []u32,
-    // jolts: []i32,
-    //
+    lights: []bool,
+    buttons: [][]u64,
+    jolts: []u64,
+
     const Self = @This();
 
     pub fn parse(allocator: std.mem.Allocator, input: []const u8) !Self {
-        var lights: u32 = undefined;
-        var buttons_list = std.ArrayList(u32){};
+        const lights: []bool = undefined;
+        var buttons_list = std.ArrayList([]usize){};
         defer buttons_list.deinit(allocator);
-        // var jolts: []i32 = undefined;
+        var jolts: []u64 = undefined;
 
         var it = std.mem.tokenizeScalar(u8, input, ' ');
         while (it.next()) |item| {
@@ -195,33 +132,81 @@ const MachineConfig = struct {
             const middle = item[1 .. item.len - 1];
             const last = item[item.len - 1];
             if (first == '[' and last == ']') {
-                lights = try parseLights(middle);
+                // lights = try parseLights(middle);
             } else if (first == '(' and last == ')') {
-                const button = try parseButton(middle);
+                const button = try parseArray(usize, allocator, middle);
                 buttons_list.append(allocator, button) catch return AdventError.OutOfMemory;
             } else if (first == '{' and last == '}') {
-                // jolts = parseJolts(middle);
+                jolts = try parseArray(u64, allocator, middle);
             } else {
                 return AdventError.ParseError;
             }
         }
 
-        const buttons = allocator.alloc(u32, buttons_list.items.len) catch return AdventError.OutOfMemory;
+        const buttons = allocator.alloc([]usize, buttons_list.items.len) catch return AdventError.OutOfMemory;
         @memcpy(buttons, buttons_list.items);
 
-        return .{ .lights = lights, .buttons = buttons };
+        return .{ .lights = lights, .buttons = buttons, .jolts = jolts };
     }
 
     pub fn deinit(self: Self, allocator: std.mem.Allocator) void {
+        for (self.buttons) |button| {
+            allocator.free(button);
+        }
         allocator.free(self.buttons);
+        allocator.free(self.jolts);
     }
 };
 
-test "day 10 part 1" {
+fn calcFactors(allocator: std.mem.Allocator, jolts: []u64) ![]const u64 {
+    var factors = allocator.alloc(u64, jolts.len) catch return AdventError.OutOfMemory;
+    factors[0] = 1;
+
+    for (1..jolts.len) |i| {
+        factors[i] = factors[i - 1] * (jolts[i - 1] + 1);
+    }
+
+    return factors;
+}
+
+fn convertToTarget(factors: []const u64, vs: []u64) u64 {
+    var total: u64 = 0;
+
+    for (factors, vs) |f, v| {
+        total += f * v;
+    }
+
+    return total;
+}
+
+fn convertToCoins(allocator: std.mem.Allocator, factors: []const u64, buttons: [][]usize) ![]u64 {
+    var buf = allocator.alloc(u64, buttons.len) catch return AdventError.OutOfMemory;
+
+    for (0.., buttons) |i, button| {
+        var v: u64 = 0;
+        for (button) |k| {
+            v += factors[k];
+        }
+        buf[i] = v;
+    }
+
+    return buf;
+}
+
+// test "day 10 part 1" {
+//     const gpa = std.testing.allocator;
+//
+//     const result = try advent.process_file(gpa, part1, "input/example_day10");
+//     defer gpa.free(result);
+//
+//     try std.testing.expectEqualStrings("7", result);
+// }
+
+test "day 10 part 2" {
     const gpa = std.testing.allocator;
 
-    const result = try advent.process_file(gpa, part1, "input/example_day10");
+    const result = try advent.process_file(gpa, part2, "input/example_day10");
     defer gpa.free(result);
 
-    try std.testing.expectEqualStrings("7", result);
+    try std.testing.expectEqualStrings("33", result);
 }
