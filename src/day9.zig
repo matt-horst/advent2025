@@ -73,30 +73,17 @@ pub fn part2(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
     std.mem.sort(Line, bounds_h, {}, Line.lessThanH);
     std.mem.sort(Line, bounds_v, {}, Line.lessThanV);
 
-    std.debug.print("\nbh: {any}\n", .{bounds_h});
-    std.debug.print("bv: {any}\n\n", .{bounds_v});
-
-    std.debug.print("\nx: {}, y: {}\n", .{ xlimit, ylimit });
-    // print(allocator, bounds_h, bounds_v, xlimit + 1, ylimit + 1) catch return AdventError.OutOfMemory;
-
     var max: u64 = 0;
-    var best_a: Point = undefined;
-    var best_b: Point = undefined;
     for (0.., points.items) |i, a| {
         for (points.items[i + 1 ..]) |b| {
-            // std.debug.print("a: {any}, b: {any}\n", .{ a, b });
             const center: Point = .{ .x = @divFloor(a.x + b.x, 2), .y = @divFloor(a.y + b.y, 2) };
             const box = Box.create(a, b);
             const box_area = box.area();
             if (box_area > max and !crossesBoundary(box, bounds_h, bounds_v) and isInterior(center, bounds_h, bounds_v)) {
-                best_a = a;
-                best_b = b;
                 max = box_area;
-                // std.debug.print("a: {any}\nb: {any}\nmax: {}\n\n", .{ a, b, max });
             }
         }
     }
-    std.debug.print("a: {any}, b: {any}\n", .{ best_a, best_b });
 
     const buf = std.fmt.allocPrint(allocator, "{}", .{max}) catch return AdventError.OutOfMemory;
     return buf;
@@ -277,9 +264,6 @@ fn crossesBoundary(box: Box, bounds_h: []Line, bounds_v: []Line) bool {
 }
 
 fn intersectsLine(a: Line, b: Line) bool {
-    if (a.a.x == 7 and a.a.y == 1 and a.b.x == 11 and a.b.y == 1 and b.a.x == -1 and b.a.y == 5 and b.b.x == 9 and b.b.y == 5) {
-        std.debug.print("here\n", .{});
-    }
     if (a.dir == b.dir) {
         switch (a.dir) {
             .horz => {
@@ -343,13 +327,9 @@ fn isInterior(p: Point, bounds_h: []Line, bounds_v: []Line) bool {
     var count_left: u32 = 0;
     const ray_h = Line.create(p, .{ .x = -1, .y = p.y });
     for (bounds_v) |line| {
-        // if (line.a.x > p.x) break;
         if (isInside(p, line)) return true;
 
         if (intersectsLine(line, ray_h)) {
-            if (p.x == 9 and p.y == 5) {
-                std.debug.print("{any} intersects {any}: {}\n", .{ line, ray_h, intersectsLine(line, ray_h) });
-            }
             count_left += 1;
         }
     }
@@ -359,13 +339,9 @@ fn isInterior(p: Point, bounds_h: []Line, bounds_v: []Line) bool {
     var count_up: u32 = 0;
     const ray_v = Line.create(p, .{ .x = p.x, .y = -1 });
     for (bounds_h) |line| {
-        // if (line.a.y > p.y) break;
         if (isInside(p, line)) return true;
 
         if (intersectsLine(line, ray_v)) {
-            if (p.x == 9 and p.y == 5) {
-                std.debug.print("{any} intersects {any}\n", .{ line, ray_v });
-            }
             count_up += 1;
         }
     }
@@ -386,7 +362,6 @@ fn findBoundariesBetween(comptime T: type, boundaries: []T, a: i32, b: i32, cmp:
     var end = binSearch(T, boundaries, b, cmp);
     end = @min(end, boundaries.len - 1);
     start = @min(start, end, boundaries.len - 1);
-    // std.debug.print("between: [{}, {}] -> [{}, {}]\n", .{ a, b, start, end });
 
     return boundaries[start .. end + 1];
 }
