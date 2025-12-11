@@ -53,40 +53,31 @@ pub fn part2(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
     }
 
     std.debug.assert(points.items.len % 2 == 0);
-    const num_bounds = points.items.len / 2;
+    const num_bounds = points.items.len;
 
-    var bounds_h = allocator.alloc(HLine, num_bounds) catch return AdventError.OutOfMemory;
+    var bounds_h = allocator.alloc(Line, num_bounds) catch return AdventError.OutOfMemory;
     defer allocator.free(bounds_h);
 
-    var bounds_v = allocator.alloc(VLine, num_bounds) catch return AdventError.OutOfMemory;
+    var bounds_v = allocator.alloc(Line, num_bounds) catch return AdventError.OutOfMemory;
     defer allocator.free(bounds_v);
 
-    var hi: usize = 0;
-    var vi: usize = 0;
     for (0..points.items.len) |i| {
-        // Looping from [0, len] ensures that the last point connects to first
-        const prev = points.items[i % points.items.len];
+        // Looping from [0, len) ensures that the last point connects to first
+        const prev = points.items[i];
         const curr = points.items[(i + 1) % points.items.len];
 
-        if (prev.y == curr.y) {
-            // The two red tiles form a horizontal line
-            bounds_h[hi] = HLine.create(prev, curr);
-            hi += 1;
-        } else if (prev.x == curr.x) {
-            // The two red tiles form a vertical line
-            bounds_v[vi] = VLine.create(prev, curr);
-            vi += 1;
-        } else {
-            // The two points somehow do not form an orthogonal boundary
-            return AdventError.ParseError;
-        }
+        bounds_h[i] = Line.create(prev, curr);
+        bounds_v[i] = Line.create(prev, curr);
     }
 
-    std.mem.sort(HLine, bounds_h, {}, HLine.lessThan);
-    std.mem.sort(VLine, bounds_v, {}, VLine.lessThan);
+    std.mem.sort(Line, bounds_h, {}, Line.lessThanH);
+    std.mem.sort(Line, bounds_v, {}, Line.lessThanV);
+
+    std.debug.print("\nbh: {any}\n", .{bounds_h});
+    std.debug.print("bv: {any}\n\n", .{bounds_v});
 
     std.debug.print("\nx: {}, y: {}\n", .{ xlimit, ylimit });
-    print(allocator, bounds_h, bounds_v, xlimit + 1, ylimit + 1) catch return AdventError.OutOfMemory;
+    // print(allocator, bounds_h, bounds_v, xlimit + 1, ylimit + 1) catch return AdventError.OutOfMemory;
 
     var max: u64 = 0;
     var best_a: Point = undefined;
@@ -95,22 +86,23 @@ pub fn part2(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
         for (points.items[i + 1 ..]) |b| {
             // std.debug.print("a: {any}, b: {any}\n", .{ a, b });
             const center: Point = .{ .x = @divFloor(a.x + b.x, 2), .y = @divFloor(a.y + b.y, 2) };
-            const curr_area = area(a, b);
-            if (curr_area > max and !intersectsBoundary(a, b, bounds_h, bounds_v) and isInterior(center, bounds_h, bounds_v)) {
+            const box = Box.create(a, b);
+            const box_area = box.area();
+            if (box_area > max and !crossesBoundary(box, bounds_h, bounds_v) and isInterior(center, bounds_h, bounds_v)) {
                 best_a = a;
                 best_b = b;
-                max = curr_area;
+                max = box_area;
                 // std.debug.print("a: {any}\nb: {any}\nmax: {}\n\n", .{ a, b, max });
             }
         }
     }
-    std.debug.print("a: {any}, b: {any}\n", .{best_a, best_b});
+    std.debug.print("a: {any}, b: {any}\n", .{ best_a, best_b });
 
     const buf = std.fmt.allocPrint(allocator, "{}", .{max}) catch return AdventError.OutOfMemory;
     return buf;
 }
 
-fn print(allocator: std.mem.Allocator, bh: []HLine, bv: []VLine, xlimit: usize, ylimit: usize) !void {
+fn print(allocator: std.mem.Allocator, bh: []Line, bv: []Line, xlimit: usize, ylimit: usize) !void {
     var tiles = try allocator.alloc([]Tile, ylimit);
     defer {
         for (tiles) |row| allocator.free(row);
@@ -125,34 +117,35 @@ fn print(allocator: std.mem.Allocator, bh: []HLine, bv: []VLine, xlimit: usize, 
     }
 
     for (bh) |line| {
-        const y: usize = @intCast(line.y);
-        const x1: usize = @intCast(line.x1);
-        const x2: usize = @intCast(line.x2);
+        tiles[@intCast(line.a.y)][@intCast(line.a.x)] = .red;
+        tiles[@intCast(line.b.y)][@intCast(line.b.x)] = .red;
 
-        tiles[y][x1] = .red;
-        tiles[y][x2] = .red;
+        switch (line.dir) {
+            .horz => {
+                const y: usize = @intCast(line.a.y);
+                const x1: usize = @intCast(line.a.x);
+                const x2: usize = @intCast(line.b.x);
 
-        for (x1 + 1..x2) |x| {
-            tiles[y][x] = .green;
-        }
-    }
+                for (x1 + 1..x2) |x| {
+                    tiles[y][x] = .green;
+                }
+            },
+            .vert => {
+                const x: usize = @intCast(line.a.x);
+                const y1: usize = @intCast(line.a.y);
+                const y2: usize = @intCast(line.b.y);
 
-    for (bv) |line| {
-        const x: usize = @intCast(line.x);
-        const y1: usize = @intCast(line.y1);
-        const y2: usize = @intCast(line.y2);
-
-        tiles[y1][x] = .red;
-        tiles[y2][x] = .red;
-
-        for (y1 + 1..y2) |y| {
-            tiles[y][x] = .green;
+                for (y1 + 1..y2) |y| {
+                    tiles[y][x] = .green;
+                }
+            },
+            else => {},
         }
     }
 
     for (0..ylimit) |y| {
         for (0..xlimit) |x| {
-            if (isInterior(.{.x = @intCast(x), .y = @intCast(y)}, bh, bv)) {
+            if (isInterior(.{ .x = @intCast(x), .y = @intCast(y) }, bh, bv)) {
                 tiles[y][x] = .green;
             }
         }
@@ -178,134 +171,185 @@ const Point = struct {
     y: i32,
 };
 
-const VLine = struct {
-    y1: i32,
-    y2: i32,
-    x: i32,
+const Dir = enum { horz, vert, diag };
+
+const Line = struct {
+    a: Point,
+    b: Point,
+    dir: Dir,
 
     const Self = @This();
 
     pub fn create(a: Point, b: Point) Self {
-        std.debug.assert(a.x == b.x);
+        const tl: Point = .{ .x = @min(a.x, b.x), .y = @min(a.y, b.y) };
+        const br: Point = .{ .x = @max(a.x, b.x), .y = @max(a.y, b.y) };
+        const dir: Dir = if (a.x == b.x) .vert else if (a.y == b.y) .horz else .diag;
 
-        return .{ .x = a.x, .y1 = @min(a.y, b.y), .y2 = @max(a.y, b.y) };
+        return .{ .a = tl, .b = br, .dir = dir };
     }
 
-    pub fn cmp(self: Self, x: i32) Cmp {
-        if (x < self.x) return .lt;
-        if (x > self.x) return .gt;
-        return .eq;
+    pub fn cmp(self: Self, v: i32) Cmp {
+        return switch (self.dir) {
+            .horz => if (v < self.a.y) .lt else if (v > self.a.y) .gt else .eq,
+            .vert => if (v < self.a.x) .lt else if (v > self.a.x) .gt else .eq,
+            else => unreachable,
+        };
     }
 
-    pub fn lessThan(_: void, self: Self, other: Self) bool {
-        return self.x < other.x;
+    pub fn lessThanH(_: void, self: Self, other: Self) bool {
+        return self.a.y < other.a.y;
+    }
+
+    pub fn lessThanV(_: void, self: Self, other: Self) bool {
+        return self.a.x < other.a.x;
+    }
+
+    pub fn area(self: Self) i32 {
+        const dx = self.b.x - self.a.x;
+        const dy = self.b.y - self.a.y;
+        return (dx + 1) * (dy + 1);
     }
 };
 
-const HLine = struct {
-    x1: i32,
-    x2: i32,
-    y: i32,
+const Box = struct {
+    diag: Line,
+    top: Line,
+    left: Line,
+    right: Line,
+    bot: Line,
 
     const Self = @This();
 
     pub fn create(a: Point, b: Point) Self {
-        std.debug.assert(a.y == b.y);
+        const diag = Line.create(a, b);
+        const width = diag.b.x - diag.a.x + 1;
+        const height = diag.b.y - diag.a.y + 1;
+        
+        var tl = diag.a;
+        if (width > 1) tl.x += 1;
+        if (height > 1) tl.y += 1;
 
-        return .{ .y = a.y, .x1 = @min(a.x, b.x), .x2 = @max(a.x, b.x) };
+        var br = diag.b;
+        if (width > 1) br.x -= 1;
+        if (height > 1) br.x -= 1;
+
+        const tr: Point = .{ .x = br.x, .y = tl.y };
+        const bl: Point = .{ .x = tl.x, .y = br.y };
+
+        const top = Line.create(tl, tr);
+        const bot = Line.create(bl, br);
+        const left = Line.create(tl, bl);
+        const right = Line.create(tr, br);
+
+        return .{ .top = top, .left = left, .right = right, .bot = bot, .diag = diag };
     }
 
-    pub fn cmp(self: Self, y: i32) Cmp {
-        if (y < self.y) return .lt;
-        if (y > self.y) return .gt;
-        return .eq;
-    }
+    pub fn area(self: Self) u64 {
+        const dx: u64 = @intCast(@abs(self.diag.b.x - self.diag.a.x));
+        const dy: u64 = @intCast(@abs(self.diag.b.y - self.diag.a.y));
 
-    pub fn lessThan(_: void, self: Self, other: Self) bool {
-        return self.y < other.y;
+        return (dx + 1) * (dy + 1);
     }
 };
 
-fn intersectsBoundary(a: Point, b: Point, bounds_h: []HLine, bounds_v: []VLine) bool {
-    const left = @min(a.x, b.x);
-    const right = @max(a.x, b.x);
-    const top = @min(a.y, b.y);
-    const bot = @max(a.y, b.y);
-
-    // std.debug.print("top: {}, bot: {}, left: {}, right: {}\n", .{ top, bot, left, right });
-
-    const h1: HLine = .{ .y = top, .x1 = left, .x2 = right };
-    const h2: HLine = .{ .y = bot, .x1 = left, .x2 = right };
-    // for (findBoundariesBetween(VLine, bounds_v, left, right, VLine.cmp)) |line| {
+fn crossesBoundary(box: Box, bounds_h: []Line, bounds_v: []Line) bool {
     for (bounds_v) |line| {
-        if (line.x <= left) continue;
-        if (line.x >= right) break;
-
-        if (intersectsLine(h1, line)) {
+        if (crossesLine(box.top, line)) {
             return true;
         }
 
-        if (intersectsLine(h2, line)) {
+        if (crossesLine(box.bot, line)) {
             return true;
         }
     }
 
-    const v1: VLine = .{ .x = left, .y1 = bot, .y2 = top };
-    const v2: VLine = .{ .x = right, .y1 = bot, .y2 = top };
-    // for (findBoundariesBetween(HLine, bounds_h, bot, top, HLine.cmp)) |line| {
     for (bounds_h) |line| {
-        if (line.y <= bot) continue;
-        if (line.y >= top) break;
-
-        if (intersectsLine(line, v1)) {
+        if (crossesLine(box.left, line)) {
             return true;
         }
 
-        if (intersectsLine(line, v2)) {
+        if (crossesLine(box.right, line)) {
             return true;
         }
     }
+
     return false;
 }
 
-fn intersectsLine(a: anytype, b: anytype) bool {
-    var hline: HLine = undefined;
-    var vline: VLine = undefined;
+fn intersectsLine(a: Line, b: Line) bool {
+    if (a.a.x == 7 and a.a.y == 1 and a.b.x == 11 and a.b.y == 1 and b.a.x == -1 and b.a.y == 5 and b.b.x == 9 and b.b.y == 5) {
+        std.debug.print("here\n", .{});
+    }
+    if (a.dir == b.dir) {
+        switch (a.dir) {
+            .horz => {
+                if (a.a.y != b.a.y) return false;
+                return (b.a.x <= a.b.x and a.b.x <= b.b.x) or (a.a.x <= b.a.x and b.a.x <= a.b.x);
+            },
+            .vert => {
+                if (a.a.x != b.a.x) return false;
+                return (b.a.y <= a.b.y and a.b.y <= b.b.y) or (a.a.y <= b.a.y and b.a.y <= a.b.y);
+            },
+            else => unreachable,
+        }
+    }
 
-    std.debug.assert(@TypeOf(a) != @TypeOf(b));
+    switch (a.dir) {
+        .horz => {
+            const y = a.a.y;
+            if (y < b.a.y or y > b.b.y) return false;
 
-    switch (@TypeOf(a)) {
-        HLine => hline = a,
-        VLine => vline = a,
+            const x = b.a.x;
+            if (x < a.a.x or x > a.b.x) return false;
+
+            return true;
+        },
+        .vert => {
+            const y = b.a.y;
+            if (y < a.a.y or y > a.b.y) return false;
+
+            const x = a.a.x;
+            if (x < b.a.x or x > b.b.x) return false;
+
+            return true;
+        },
         else => unreachable,
     }
-
-    switch (@TypeOf(b)) {
-        HLine => hline = b,
-        VLine => vline = b,
-        else => unreachable,
-    }
-
-    if ((vline.x < hline.x1) or (vline.x > hline.x2)) {
-        // std.debug.print("{any} intersects {any}: false\n", .{ a, b });
-        return false;
-    }
-    if ((hline.y < vline.y1) or (hline.y > vline.y2)) {
-        // std.debug.print("{any} intersects {any}: false\n", .{ a, b });
-        return false;
-    }
-
-    // std.debug.print("{any} intersects {any}: true\n", .{ a, b });
-    return true;
 }
 
-fn isInterior(p: Point, bounds_h: []HLine, bounds_v: []VLine) bool {
+fn crossesLine(a: Line, b: Line) bool {
+    if (a.dir == b.dir) {
+        return false;
+    }
+
+    switch (a.dir) {
+        .horz => {
+            const y = a.a.y;
+            const x = b.a.x;
+
+            return (b.a.y < y and y < b.b.y) and (a.a.x < x and x < a.b.x);
+        },
+        .vert => {
+            const y = b.a.y;
+            const x = a.a.x;
+
+            return (b.a.x < x and x < b.b.x) and (a.a.y < y and y < a.b.y);
+        },
+        else => unreachable,
+    }
+}
+
+fn isInterior(p: Point, bounds_h: []Line, bounds_v: []Line) bool {
     var count_left: u32 = 0;
-    const ray_h = HLine.create(p, .{ .x = -1, .y = p.y });
+    const ray_h = Line.create(p, .{ .x = -1, .y = p.y });
     for (bounds_v) |line| {
-        if (line.x > p.x) break;
+        // if (line.a.x > p.x) break;
+        if (isInside(p, line)) return true;
 
         if (intersectsLine(line, ray_h)) {
+            if (p.x == 9 and p.y == 5) {
+                std.debug.print("{any} intersects {any}: {}\n", .{ line, ray_h, intersectsLine(line, ray_h) });
+            }
             count_left += 1;
         }
     }
@@ -313,16 +357,28 @@ fn isInterior(p: Point, bounds_h: []HLine, bounds_v: []VLine) bool {
     if (count_left % 2 != 1) return false;
 
     var count_up: u32 = 0;
-    const ray_v = VLine.create(p, .{ .x = p.x, .y = -1 });
+    const ray_v = Line.create(p, .{ .x = p.x, .y = -1 });
     for (bounds_h) |line| {
-        if (line.y > p.y) break;
+        // if (line.a.y > p.y) break;
+        if (isInside(p, line)) return true;
 
         if (intersectsLine(line, ray_v)) {
+            if (p.x == 9 and p.y == 5) {
+                std.debug.print("{any} intersects {any}\n", .{ line, ray_v });
+            }
             count_up += 1;
         }
     }
 
     return count_up % 2 == 1;
+}
+
+fn isInside(p: Point, line: Line) bool {
+    return switch (line.dir) {
+        .horz => (p.y == line.a.y and line.a.x <= p.x and p.x <= line.b.x),
+        .vert => (p.x == line.a.x and line.a.y <= p.y and p.y <= line.b.y),
+        else => unreachable
+    };
 }
 
 fn findBoundariesBetween(comptime T: type, boundaries: []T, a: i32, b: i32, cmp: CmpFn(T)) []T {
@@ -383,8 +439,8 @@ test "day 9 part 2" {
 }
 
 test "lines intersect" {
-    const a = VLine{ .x = 2, .y1 = 0, .y2 = 4 };
-    const b = HLine{ .y = 2, .x1 = 0, .x2 = 4 };
-
-    try std.testing.expect(intersectsLine(a, b));
+    // const a = Line{ point, .y1 = 0, .y2 = 4 };
+    // const b = Line{ .y = 2, .x1 = 0, .x2 = 4 };
+    //
+    // try std.testing.expect(intersectsLine(a, b));
 }
