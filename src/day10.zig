@@ -9,19 +9,9 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
     main: while (it.next()) |line| {
         const cfg = try MachineConfig.parse(allocator, line);
         defer cfg.deinit(allocator);
-        std.debug.print("{any}\n", .{cfg});
 
         var seen = std.AutoHashMap(u32, void).init(allocator);
         defer seen.deinit();
-
-        // var adj_list = std.AutoHashMap(u32, std.AutoHashMap(u32, void)).init(allocator);
-        // defer {
-        //     var adj_list_it = adj_list.valueIterator();
-        //     while (adj_list_it.next()) |lst| {
-        //         lst.deinit();
-        //     }
-        //     adj_list.deinit();
-        // }
 
         var queue = Queue(struct { id: u32, depth: u32 }).init(allocator);
         defer queue.deinit();
@@ -37,41 +27,11 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
                 queue.pushRight(.{ .id = adj, .depth = node.depth + 1 }) catch return AdventError.OutOfMemory;
 
                 if (adj == cfg.lights) {
-                    std.debug.print("found {b:06} in {}\n", .{ adj, node.depth + 1 });
                     total += node.depth + 1;
                     continue :main;
                 }
-
-                // queue.print();
-                //
-
-                // if (adj_list.getPtr(node)) |lst| {
-                //     lst.put(adj, {}) catch return AdventError.OutOfMemory;
-                // } else {
-                //     var lst = std.AutoHashMap(u32, void).init(allocator);
-                //     lst.put(adj, {}) catch return AdventError.OutOfMemory;
-                //     adj_list.put(node, lst) catch return AdventError.OutOfMemory;
-                // }
-                //
-                // if (adj_list.getPtr(adj)) |lst| {
-                //     lst.put(node, {}) catch return AdventError.OutOfMemory;
-                // } else {
-                //     var lst = std.AutoHashMap(u32, void).init(allocator);
-                //     lst.put(node, {}) catch return AdventError.OutOfMemory;
-                //     adj_list.put(adj, lst) catch return AdventError.OutOfMemory;
-                // }
             }
         }
-
-        // var adj_list_it = adj_list.iterator();
-        // while (adj_list_it.next()) |kvp| {
-        //     std.debug.print("{}: ", .{kvp.key_ptr.*});
-        //     var v_it = kvp.value_ptr.keyIterator();
-        //     while (v_it.next()) |v| {
-        //         std.debug.print("{}, ", .{v.*});
-        //     }
-        //     std.debug.print("\n", .{});
-        // }
     }
 
     const buf = std.fmt.allocPrint(allocator, "{}", .{total});
@@ -177,69 +137,6 @@ fn Queue(comptime T: type) type {
                 return node;
             }
         };
-    };
-}
-
-fn MinHeap(comptime T: type) type {
-    return struct {
-        nodes: std.ArrayList(T) = std.ArrayList(T){},
-        len: usize = 0,
-        allocator: std.mem.Allocator,
-
-        const Self = @This();
-
-        pub fn insert(self: *Self, item: T) !void {
-            if (self.len == self.nodes.capacity) {
-                try self.nodes.append(item);
-            } else {
-                self.nodes.items[self.len] = item;
-                self.len += 1;
-            }
-
-            self.pushUp(self.len - 1);
-        }
-
-        pub fn extract(self: *Self) ?T {
-            if (self.len == 0) return null;
-
-            const root = self.nodes.items[0];
-
-            std.mem.swap(T, &self.nodes.items[0], &self.nodes.items[self.len - 1]);
-
-            self.pushDown(0);
-
-            return root;
-        }
-
-        pub fn init(allocator: std.mem.Allocator) Self {
-            return .{ .allocator = allocator };
-        }
-
-        pub fn deinit(self: *Self) void {
-            self.nodes.deinit(self.allocator);
-        }
-
-        fn pushDown(self: *Self, i: usize) void {
-            const c1 = 2 * i + 1;
-            if (c1 >= self.len) return;
-
-            const children = self.nodes.items[c1..@min(self.len, c1 + 2)];
-            const min_child = c1 + std.mem.indexOfMin(T, children);
-
-            if (self.nodes[min_child] < self.nodes[i]) {
-                std.mem.swap(T, &self.nodes.items[i], &self.nodes.items[min_child]);
-                self.pushDown(min_child);
-            }
-        }
-
-        fn pushUp(self: *Self, i: usize) void {
-            const p = (i - 1) / 2;
-
-            if (self.nodes.items[i] < self.nodes.items[p]) {
-                std.mem.swap(T, &self.nodes.item[i], &self.nodes.items[p]);
-                self.pushUp(p);
-            }
-        }
     };
 }
 
