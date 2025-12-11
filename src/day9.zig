@@ -211,7 +211,7 @@ const Box = struct {
         const diag = Line.create(a, b);
         const width = diag.b.x - diag.a.x + 1;
         const height = diag.b.y - diag.a.y + 1;
-        
+
         var tl = diag.a;
         if (width > 1) tl.x += 1;
         if (height > 1) tl.y += 1;
@@ -353,7 +353,7 @@ fn isInside(p: Point, line: Line) bool {
     return switch (line.dir) {
         .horz => (p.y == line.a.y and line.a.x <= p.x and p.x <= line.b.x),
         .vert => (p.x == line.a.x and line.a.y <= p.y and p.y <= line.b.y),
-        else => unreachable
+        else => unreachable,
     };
 }
 

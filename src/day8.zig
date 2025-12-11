@@ -182,7 +182,6 @@ pub fn part2(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
     }
 
     return AdventError.ParseError;
-
 }
 
 fn size_cmp(a: i64, b: i64) Cmp {
