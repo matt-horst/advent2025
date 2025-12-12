@@ -166,7 +166,7 @@ fn Stack(comptime T: type) type {
 test "day 11 part 1" {
     const gpa = std.testing.allocator;
 
-    const result = try advent.process_file(gpa, part1, "input/example_day11");
+    const result = try advent.process_file(gpa, part1, "input/example_day11_part1");
     defer gpa.free(result);
 
     try std.testing.expectEqualStrings("5", result);
