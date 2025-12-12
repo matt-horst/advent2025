@@ -12,6 +12,27 @@ pub fn part1(allocator: std.mem.Allocator, input: []const u8) AdventError![]cons
     return buf;
 }
 
+pub fn part2(allocator: std.mem.Allocator, input: []const u8) AdventError![]const u8 {
+    var graph = try parse_input(allocator, input);
+    defer graph.deinit();
+
+    var total: u64 = 0;
+    // svr -> dac -> fft -> out
+    const svr_to_dac = try graph.count_paths("svr", "dac");
+    const dac_to_fft = try graph.count_paths("dac", "fft");
+    const fft_to_out = try graph.count_paths("fft", "out");
+    total += svr_to_dac * dac_to_fft * fft_to_out;
+
+    // svr -> fft -> dac -> out
+    const svr_to_fft = try graph.count_paths("svr", "fft");
+    const fft_to_dac = try graph.count_paths("fft", "dac");
+    const dac_to_out = try graph.count_paths("dac", "out");
+    total += svr_to_fft * fft_to_dac * dac_to_out;
+
+    const buf = std.fmt.allocPrint(allocator, "{}", .{total}) catch return AdventError.OutOfMemory;
+    return buf;
+}
+
 fn parse_input(allocator: std.mem.Allocator, input: []const u8) !Graph {
     var graph = Graph.init(allocator);
 
@@ -55,17 +76,14 @@ const Graph = struct {
         var it = std.mem.splitScalar(u8, input, ':');
 
         const parent = it.first();
-        std.debug.assert(parent.len == 3);
 
-        var children_list = std.StringHashMap(void).init(self.allocator);
-        self.adj_list_fwd.put(parent, children_list) catch return AdventError.OutOfMemory;
+        self.adj_list_fwd.put(parent, std.StringHashMap(void).init(self.allocator)) catch return AdventError.OutOfMemory;
+        var children_list = self.adj_list_fwd.getPtr(parent).?;
 
         const children = it.rest();
 
         var it_children = std.mem.tokenizeScalar(u8, children, ' ');
         while (it_children.next()) |child| {
-            std.debug.assert(child.len == 3);
-
             children_list.put(child, {}) catch return AdventError.OutOfMemory;
 
             const back = self.adj_list_back.getOrPut(child) catch return AdventError.OutOfMemory;
@@ -76,8 +94,8 @@ const Graph = struct {
         }
     }
 
-    pub fn count_paths(self: *Self, src: []const u8, dest: []const u8) !u32 {
-        var count = std.StringHashMap(u32).init(self.allocator);
+    pub fn count_paths(self: *Self, src: []const u8, dest: []const u8) !u64 {
+        var count = std.StringHashMap(u64).init(self.allocator);
         defer count.deinit();
 
         var stack = Stack(struct { node: []const u8, seen: bool = false }).init(self.allocator);
@@ -88,7 +106,7 @@ const Graph = struct {
         while (stack.pop()) |curr| {
             if (count.get(curr.node) != null) continue;
             if (curr.seen) {
-                var total: u32 = 0;
+                var total: u64 = 0;
 
                 if (std.mem.eql(u8, curr.node, src)) {
                     total = 1;
@@ -152,4 +170,13 @@ test "day 11 part 1" {
     defer gpa.free(result);
 
     try std.testing.expectEqualStrings("5", result);
+}
+
+test "day 11 part 2" {
+    const gpa = std.testing.allocator;
+
+    const result = try advent.process_file(gpa, part2, "input/example_day11_part2");
+    defer gpa.free(result);
+
+    try std.testing.expectEqualStrings("2", result);
 }
