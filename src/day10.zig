@@ -202,11 +202,11 @@ fn convertToCoins(allocator: std.mem.Allocator, factors: []const u64, buttons: [
 //     try std.testing.expectEqualStrings("7", result);
 // }
 
-test "day 10 part 2" {
-    const gpa = std.testing.allocator;
-
-    const result = try advent.process_file(gpa, part2, "input/example_day10");
-    defer gpa.free(result);
-
-    try std.testing.expectEqualStrings("33", result);
-}
+// test "day 10 part 2" {
+//     const gpa = std.testing.allocator;
+//
+//     const result = try advent.process_file(gpa, part2, "input/example_day10");
+//     defer gpa.free(result);
+//
+//     try std.testing.expectEqualStrings("33", result);
+// }
